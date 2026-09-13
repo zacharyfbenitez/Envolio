@@ -1,6 +1,16 @@
 # Real takeoff slots: access and integration plan
 
-Research checked 2026-09-13. Envolio has an adapter contract and presentation layer, **not an active FAA or EUROCONTROL slot subscription**. No applications, license purchases or vendor messages were sent. No public lookup pages are scraped. `estimated_off`, ETOT, airline ETD, airport delay averages and predicted runway times are never promoted to an assigned EDCT/CTOT.
+Research checked 2026-09-13. **Updated after the owner explicitly selected the FAA public EDCT lookup:** Envolio now queries that form directly for nearby US departures. It also has an authorized adapter contract, but no active SWIM/EUROCONTROL subscription. No applications, license purchases or vendor messages were sent. `estimated_off`, ETOT, airline ETD, airport delay averages and predicted runway times are never promoted to an assigned EDCT/CTOT.
+
+## Public FAA lookup — current US implementation
+
+Observed form: `POST https://www.fly.faa.gov/edct/showEDCT`, URL-encoded `callsign`, `dept`, `arr`. The public form returned data without authentication or CAPTCHA during inspection. The result identifies Zulu dates/times and columns EDCT, Filed Departure Time, Control Element, Flight Cancelled? A real query for RPA4397 / JFK / BOS returned two dates: September 12 and 13; the latter filed at 19:30 UTC and assigned 22:20 UTC. That was a point-in-time result, not a lasting promise.
+
+`faa-edct.js` is the direct parser/loader. Default `ENABLE_FAA_EDCT_LOOKUP=true`, set false to disable. One callsign/airport-code pair, no identifier brute forcing; upcoming US departures only, 24-hour horizon and 2-hour past-schedule allowance. Two-minute cache, request coalescing, 10 new requests/minute/process, four-second timeout, 128 KiB cap, no redirects. HTTP 403/429 stops requests for 15 minutes; no access-control bypass. Fleet-wide deployment must enforce a shared upstream budget rather than multiplying the per-process cap.
+
+It verifies echoed identity/route, expected table schema, explicit Zulu timezone, and exact filed-departure UTC against the selected scheduled departure. This conservative match can reject a real slot if filed and scheduled times differ; it will not guess. Duplicate rows, unknown formats, no records, cancelled flight plans and expired slots fail closed. No explicit assignment means unavailable, not “no delay.” Control element is shown separately, not translated into an invented delay cause. The page lacks an issuance timestamp: `issued_at` stays null and `verified_at` records our successful check. No source revision number, historical withdrawal stream or guaranteed SLA is invented.
+
+This is a bounded public HTML integration, not an FAA-supported commercial API or proof of bulk-use rights. The inspected form and web-policy page did not expose a machine-use approval flow; confirm sustained commercial volume/redistribution expectations with FAA before scaling. The approved SWIM/licensed-adapter route below remains the longer-term option. Failure of the public page never promotes a provider estimate into a slot.
 
 ## US: FAA EDCT / TFMS / SWIM
 
@@ -11,7 +21,7 @@ Research checked 2026-09-13. Envolio has an adapter contract and presentation la
 
 **Costs:** FAA's published SWIM FAQ says data currently has no cost; consumers pay their own interface-development costs. Worker hosting, storage, monitoring and engineering are ours. Confirm restricted service terms and any third-party adapter fees before budgeting; a free data feed is not a turnkey free API. [FAA cost FAQ](https://www.faa.gov/air_traffic/technology/swim/questions_answers). Observe the [SCDS usage guidelines](https://www.faa.gov/sites/faa.gov/files/air_traffic/technology/swim/governance/SCDS-Guideline-Document_v1.1_09.11.2024), including subscription/egress constraints; filter early rather than consuming duplicate national feeds.
 
-The [public EDCT lookup](https://www.fly.faa.gov/edct/) is a manual operator reference, not our supported ingestion endpoint. Its existence does not establish bulk API or redistribution rights.
+The [public EDCT lookup](https://www.fly.faa.gov/edct/) is our owner's selected near-term US source, implemented above. Its existence does not establish bulk API or redistribution rights.
 
 ## Europe: EUROCONTROL CTOT / NM B2B
 
@@ -69,7 +79,7 @@ Render/server environment for each authority (`FAA` or `EUROCONTROL`):
 - `SLOT_<AUTHORITY>_TOKEN=<secret bearer token>`
 - `SLOT_<AUTHORITY>_PROVIDER_NAME=<public attribution>`
 
-All default disabled. The URL and credentials are never returned to clients. No direct FAA/NM passwords, endpoints or certificates are exposed. No secret is needed for testing fixtures.
+The licensed adapters default disabled; the separate public FAA lookup defaults enabled. Adapter URLs and credentials are never returned to clients. No restricted FAA/NM endpoints or certificates are exposed. No secret is needed for testing fixtures.
 
 ## Product behavior and limits
 

@@ -3246,9 +3246,9 @@ function FlightDetailV2({
             </div>
           </div>
         </section>
+        {!f.actual_off && !f.actual_in && !f.cancelled && <TakeoffSlot slot={state.data.takeoff_slot} airport={f.origin} scheduled={f.scheduled_out} cached={state.data.cache_fallback?.active}/>}
         {phase === 'upcoming' && !f.cancelled && !/cancel/i.test(f.status||'') && <TravelerOutlook data={state.data} future={state.data.schedule_only} />}
         {phase === 'upcoming' && <RiskContext index={state.data.delay_index} cached={state.data.cache_fallback?.active}/>}
-        {!f.actual_off && !f.actual_in && !f.cancelled && <TakeoffSlot slot={state.data.takeoff_slot} airport={f.origin} cached={state.data.cache_fallback?.active}/>}
         {phase === "upcoming" ? (
           <>
             {!state.data.schedule_only && <section className="detail-grid phase-upcoming">

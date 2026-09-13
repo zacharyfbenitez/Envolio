@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "test:slots": "node --test tests/takeoff-slots.test.mjs",
+    "test:slots": "node --test tests/takeoff-slots.test.mjs tests/faa-edct.test.mjs",
     "test:embed": "node --test tests/embed.e2e.test.mjs",
     "dev": "concurrently \"vite --host 0.0.0.0\" \"node server.js\"",
     "build": "vite build",

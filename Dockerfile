@@ -17,6 +17,7 @@ COPY --from=build /app/web-security.js ./web-security.js
 COPY --from=build /app/operational-risk.js ./operational-risk.js
 COPY --from=build /app/risk-audit.js /app/risk-monitor.js ./
 COPY --from=build /app/takeoff-slots.js ./
+COPY --from=build /app/faa-edct.js ./
 COPY --from=build /app/route-search.js /app/delay-reasoning.js /app/skylink.js /app/validation.js /app/traveler-intelligence.js /app/provider-permissions.js /app/trip-strategy.js ./
 EXPOSE 5173
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s CMD wget -qO- http://127.0.0.1:5173/healthz || exit 1

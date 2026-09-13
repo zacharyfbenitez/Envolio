@@ -1,6 +1,7 @@
 // Contract for an authorized upstream adapter, NOT an undocumented FAA/NM API.
 // An adapter must map official EDCT/CTOT messages, including withdrawal events.
 import {monitor} from './risk-monitor.js';
+import {loadPublicEdct} from './faa-edct.js';
 const iso=value=>typeof value==='string'&&/T.*(?:Z|[+-]\d\d:\d\d)$/.test(value)&&Number.isFinite(Date.parse(value));
 const stamp=value=>iso(value)?Date.parse(value):NaN;
 const airport=a=>a?.code_icao||(/^[A-Z]{4}$/.test(a?.code||'')?a.code:null);
@@ -61,4 +62,5 @@ export function createSlotLoader(fetcher=fetch,env=process.env,clock=Date.now){
   return assigned[0]||results.find(r=>['removed','not_assigned','stale'].includes(r.status))||results[0];
  };
 }
-export const loadTakeoffSlot=createSlotLoader();
+const loadAuthorizedSlot=createSlotLoader();
+export async function loadTakeoffSlot(flight){const result=await loadAuthorizedSlot(flight);return result.status==='unavailable'?loadPublicEdct(flight):result;}
