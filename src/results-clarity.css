@@ -3,8 +3,8 @@
 .home-page .home-about .product-notes>div{padding:24px;min-height:0;border:1px solid #ffffff20;border-radius:18px;background:#ffffff04;gap:12px}
 .home-page .home-about .product-notes svg{margin:0;color:#c7b8ef;flex-shrink:0}.home-page .home-about .product-notes b{font-size:18px;line-height:1.4}.home-page .home-about .product-notes p{margin:0;max-width:none;color:#d4d3dc;font-size:15px!important}
 .home-about>summary{padding:8px;border-radius:12px}.home-about>summary:focus-visible{outline:2px solid #cab9f6;outline-offset:3px}.home-about>p{padding:0 8px}
-.home-page{position:relative;isolation:isolate}.home-sky{position:absolute;inset:0 0 auto;height:760px;pointer-events:none;z-index:-1;overflow:hidden}
-.sky-plane{position:absolute;left:12px;top:100px;width:var(--plane-size,24px);height:var(--plane-size,24px);color:#b9aae3;opacity:var(--plane-opacity,.45);animation:sky-cruise var(--flight-duration,22s) ease-in-out infinite;animation-delay:var(--flight-delay,0s);will-change:transform}
+.home-page{position:relative;isolation:isolate}.home-sky{position:absolute;inset:0 0 auto;height:760px;pointer-events:none;z-index:0;overflow:hidden}.home-page>.hero{position:relative;z-index:1}
+.sky-plane{position:absolute;left:12px;top:100px;width:var(--plane-size,24px);height:var(--plane-size,24px);color:#c9b6f3;opacity:var(--plane-opacity,.65);animation:sky-cruise var(--flight-duration,22s) ease-in-out infinite;animation-delay:var(--flight-delay,0s);will-change:transform}
 .sky-plane svg{display:block;width:100%;height:100%;fill:currentColor;fill-opacity:.07;transform:rotate(var(--heading,-12deg))}
 .sky-plane:where(:nth-child(even)){left:auto;right:42px;color:#a5dcca;--heading:155deg;animation-direction:reverse}
 .sky-plane-0{top:100px;--plane-size:29px;--flight-delay:-3s}
@@ -16,7 +16,9 @@
 .sky-plane-6{top:650px;left:68px;--plane-size:18px;--plane-opacity:.28;--flight-duration:28s;--flight-delay:-20s}
 .sky-plane-7{top:665px;right:52px;--plane-size:25px;--flight-duration:26s;--flight-delay:-7s}
 @keyframes sky-cruise{0%,100%{transform:translate(0,0) rotate(-8deg)}25%{transform:translate(28px,-38px) rotate(5deg)}50%{transform:translate(12px,-85px) rotate(-4deg)}75%{transform:translate(-8px,-42px) rotate(-14deg)}}
-@media(max-width:1300px){.home-sky{display:none}}@media(prefers-reduced-motion:reduce){.sky-plane{animation:none;will-change:auto}}
+@media(max-width:1300px){.home-page>.hero{padding-top:72px}.home-sky{display:block;height:54px}.home-sky .sky-plane{top:16px;left:8%;right:auto;width:22px;height:22px;opacity:.6;animation-name:sky-small-cruise}.home-sky .sky-plane-1{left:33%}.home-sky .sky-plane-2{left:59%}.home-sky .sky-plane-3{left:84%}.home-sky .sky-plane:nth-child(n+5){display:none}}
+@keyframes sky-small-cruise{0%,100%{transform:translate(0,0) rotate(-8deg)}50%{transform:translate(12px,-6px) rotate(8deg)}}
+@media(prefers-reduced-motion:reduce){.home-sky .sky-plane{animation:none;will-change:auto}}
 .airport-explorer{max-width:960px;margin-inline:auto;box-sizing:border-box;width:100%}.airport-condition-label{font-size:16px!important;line-height:1.5;white-space:normal!important;padding:8px 12px;border-radius:12px;background:#ffffff08}.airport-condition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.airport-pressure .pressure-factor{padding:18px;border:1px solid #ffffff20;border-radius:16px;background:#ffffff04;min-width:0}.airport-pressure .pressure-factor.caution{border-color:#c3934e66;background:#a9752210}.airport-pressure .pressure-factor strong{font-size:17px;color:#f4f3f8}.airport-pressure .pressure-factor p{margin-bottom:0;font-size:16px}.airport-pressure .airport-updated{font-size:14px;color:#d0cddd}.airport-pressure details{border-top:1px solid #ffffff25;padding-top:14px}.airport-source-row{padding:12px 0;border-bottom:1px solid #ffffff20}.airport-pressure .airport-action{font-size:17px;color:#e8e5ef}
 @media(max-width:700px){.home-page .home-about .product-notes,.airport-condition-grid{grid-template-columns:1fr}.home-page .home-about .product-notes>div{padding:20px}}
 .inbound-aircraft-facts>div{min-width:0;overflow-wrap:anywhere}.inbound-history-heading{font-size:18px;margin:20px 0 12px;color:#f5f5fa}

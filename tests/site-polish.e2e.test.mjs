@@ -42,7 +42,7 @@ test('main-site polish: compact inbound-first results, codeshares and no video',
   assert.ok(await page.$$eval('.home-about .product-notes>div',es=>es.every(e=>parseFloat(getComputedStyle(e).paddingLeft)>=20)));
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   assert.equal(await page.$eval('.sky-plane',e=>getComputedStyle(e).animationName),'none');
-  if(width<1200)assert.equal(await page.$eval('.home-sky',e=>getComputedStyle(e).display),'none');
+  assert.notEqual(await page.$eval('.home-sky',e=>getComputedStyle(e).display),'none');
   await page.type('.airport-explorer input','JFK');
   await page.$eval('.airport-explorer form',e=>e.requestSubmit());
   await page.waitForSelector('.airport-pressure');
