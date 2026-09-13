@@ -1,4 +1,5 @@
 import React from 'react';
+import {travelerAirport,arrivalDay} from './flight-summary.js';
 import {ArrowRight,X} from 'lucide-react';
 import CarrierLogo from './CarrierLogo.jsx';
 import {airlines} from './flight-search.js';
@@ -16,10 +17,11 @@ export default function SavedFlightCard({item,go,remove,base}){
   <button className="saved-main journey-main" onClick={()=>go(journeyUrl(item,base))} aria-label={`Open ${item.ident}, ${airportCode(item.origin)} to ${airportCode(item.destination)}`}>
    <span className="journey-carrier"><CarrierLogo flight={{ident_iata:item.ident,operator_iata:carrier,operator:airline}}/><span><strong>{item.ident}</strong><span>{airline}</span></span></span>
    <time className="journey-date" dateTime={item.date}>{new Date(`${item.date}T12:00:00Z`).toLocaleDateString([],{weekday:'short',month:'short',day:'numeric',year:'numeric',timeZone:'UTC'})}</time>
-   <span className="journey-route"><span><strong>{airportCode(item.origin)||'—'}</strong><span>{item.origin?.city||item.origin?.name||'Departure airport'}</span>{departure&&<b>{clock(departure,item.origin?.timezone)}</b>}</span><ArrowRight size={22}/><span><strong>{airportCode(item.destination)||'—'}</strong><span>{item.destination?.city||item.destination?.name||'Arrival airport'}</span>{arrival&&<b>{clock(arrival,item.destination?.timezone)}</b>}</span></span>
+   <span className="journey-route"><span><strong>{airportCode(item.origin)||'—'}</strong><span>{travelerAirport(item.origin)}</span>{departure&&<b>{clock(departure,item.origin?.timezone)}</b>}</span><ArrowRight size={22}/><span><strong>{airportCode(item.destination)||'—'}</strong><span>{travelerAirport(item.destination)}</span>{arrival&&<><b>{clock(arrival,item.destination?.timezone)}</b><span>{arrivalDay(departure,arrival,item.origin?.timezone,item.destination?.timezone)}</span></>}</span></span>
    <span className="journey-status-row"><span className={`journey-status ${status?.tone||'scheduled'}`}>{status?`Last seen: ${status.label.replace(' · open for updates','')}`:'Open for latest status'}</span>{snapshot?.gate_origin&&<span>Gate {snapshot.gate_origin}</span>}</span>
    <span className="journey-footer"><span>{snapshot?.checked_at?`Saved update · ${new Date(snapshot.checked_at).toLocaleDateString([],{month:'short',day:'numeric'})} ${clock(snapshot.checked_at) } UTC`:'Saved on this device'}{departure?' · Flight times local':''}</span><span>View flight <ArrowRight size={15}/></span></span>
   </button>
+  <button className="saved-watch-settings" onClick={()=>go(`${journeyUrl(item,base)}&alerts=1`)}>Notification settings</button>
   <button className="remove-save" onClick={()=>remove(item.key)} aria-label={`Remove ${item.ident}`}><X size={18}/></button>
  </article>;
 }

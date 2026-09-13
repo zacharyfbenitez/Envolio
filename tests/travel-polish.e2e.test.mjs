@@ -22,7 +22,8 @@ test('traveler essentials: next trip, changes, map, forecast, connection and ale
  for(const width of [1440,390,320]){
   await page.setViewport({width,height:1000});await page.goto(base,{waitUntil:'domcontentloaded'});await page.waitForSelector('.next-journey');
   assert.match(await page.$eval('.next-journey',e=>e.textContent),/Your next saved flight/);
-  assert.ok(await page.evaluate(()=>document.querySelector('.web-content').getBoundingClientRect().bottom<=document.querySelector('.dock-shelf').getBoundingClientRect().top));
+  assert.ok(await page.$eval('.dock-shelf',e=>getComputedStyle(e).backgroundColor==='rgba(0, 0, 0, 0)'));
+  assert.ok(await page.$eval('.pwa-dock',e=>e.getBoundingClientRect().height<=58));
   await page.screenshot({path:`/tmp/envolio-essentials-home-${width}.png`});
   await page.goto(`${base}/flight/SQ12?date=${date}`,{waitUntil:'domcontentloaded'});await page.waitForSelector('.inbound-mini-map iframe');
   assert.ok(await page.$('.route-panel .projected-delay'));assert.ok(await page.$('.route-panel .phase-upcoming'));
@@ -37,6 +38,6 @@ test('traveler essentials: next trip, changes, map, forecast, connection and ale
  }
  data.flights[0]={...f,gate_origin:'43',estimated_out:new Date(Date.parse(f.scheduled_out)+20*60000).toISOString()};data.refreshed_at=new Date(Date.now()+1000).toISOString();
  await page.click('.refresh-flight');await page.waitForSelector('.update-strip');assert.match(await page.$eval('.update-strip',e=>e.textContent),/Gate 42 → 43.*Departure 20 min later/);
- await page.click('.pwa-dock button:last-child');await page.waitForSelector('dialog[open]');assert.match(await page.$eval('dialog',e=>e.textContent),/Your flight alerts.*Manage alerts/);
+ await page.click('.pwa-dock button:last-child');await page.waitForSelector('.saved-watch-settings');await page.click('.saved-watch-settings');await page.waitForSelector('.alert-sheet');assert.match(await page.$eval('.alert-sheet',e=>e.textContent),/Watch SQ12/);
  assert.deepEqual(errors,[]);
 });

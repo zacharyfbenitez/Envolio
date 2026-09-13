@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
+import {travelerAirport,arrivalDay} from './flight-summary.js';
 import {travelerAlert} from '../alert-delivery.js';
 import {NextJourney,UpdateStrip} from './TravelPolish.jsx';
 import {ConnectionProtection} from './DecisionPanels.jsx';
@@ -46,7 +47,7 @@ const code = (a) => {
     if(/^K[A-Z]{3}$/.test(value))return value.slice(1);
     return value;
   },
-  city = (a) => a?.city || a?.name || "Not reported",
+  city = travelerAirport,
   shown = (v, s = "") =>
     v !== null && v !== undefined && v !== "" ? `${v}${s}` : "Not reported";
 const airportCountries = {
@@ -504,7 +505,7 @@ function ProductPaths({ go }) {
         <Star />
         <span>
           Frequent-flyer dashboard<em>Available now</em>
-          <b>Keep favorite flights and upcoming trips together.</b>
+          <b>Keep saved flights and upcoming trips together.</b>
         </span>
         <ArrowRight />
       </button>
@@ -573,7 +574,7 @@ function Home({ go, saved, remove }) {
           <div className="section-heading">
             <div>
               <span>YOUR JOURNEYS</span>
-              <h2>Favorite flights</h2>
+              <h2>Saved flights</h2>
             </div>
             <p>Saved privately in this browser.</p>
           </div>
@@ -587,7 +588,7 @@ function Home({ go, saved, remove }) {
               <div>
                 <b>Your watchlist starts here</b>
                 <p>
-                  Open any example flight and select “Favorite” to keep it one
+                  Open any example flight and select “Watch flight” to save it and keep it one
                   click away.
                 </p>
               </div>
@@ -639,8 +640,8 @@ function ExplorePage({ route, go, saved, remove }) {
           <h1>Saved flights</h1>
           <p>
             {saved.length
-              ? `${saved.length} favorite flight${saved.length === 1 ? "" : "s"} saved in this browser.`
-              : "No saved flights yet. Find a flight and tap Favorite to keep it here."}
+              ? `${saved.length} flight${saved.length === 1 ? "" : "s"} saved in this browser.`
+              : "No saved flights yet. Find a flight and select Watch flight to save it here."}
           </p>
           <div className="saved-grid">{saved.map(item=><SavedFlightCard key={item.key} item={item} go={go} remove={remove} base={base}/>)}</div>
           <button className="primary" onClick={()=>go(base)}>Find a flight</button>
@@ -1046,7 +1047,7 @@ function InboundAircraft({ flight, current }) {
     </section>
   );
 }
-function ChangeAwareValue({ label, value, flightKey }) {
+function ChangeAwareValue({ label, displayLabel, value, flightKey }) {
   const storageKey = `contrail.assignment.${flightKey}.${label}`,
     [previous] = useState(() => localStorage.getItem(storageKey));
   useEffect(() => {
@@ -1056,7 +1057,7 @@ function ChangeAwareValue({ label, value, flightKey }) {
   return (
     <div className={changed ? "assignment-changed" : ""}>
       <span>
-        {label}
+        {displayLabel||label}
         {changed && <em>Changed</em>}
       </span>
       <b>{shown(value)}</b>
@@ -1077,7 +1078,7 @@ function inboundSignal(f, current) {
     now = Date.now();
   if (phase === "landed")
     return depart - now <= 60 * 60e3 && depart > now
-      ? { label: "Boarding soon", tone: "positive" }
+      ? { label: "Boarding soon · estimate", tone: "neutral" }
       : { label: "Aircraft arrived", tone: "positive" };
   if (arrival - scheduled > 15 * 60e3 || arrival > depart - 45 * 60e3)
     return { label: "Inbound late", tone: "negative" };
@@ -1187,8 +1188,8 @@ function TurnTimeline({ flight, inbound }) {
           : "Expected",
     ],
     [
-      "Cleaning & turnaround",
-      arrival,
+      "Plane preparation",
+      null,
       arrived ? "Preparation time—not live-tracked" : "After gate arrival",
     ],
     [
@@ -1196,7 +1197,7 @@ function TurnTimeline({ flight, inbound }) {
       boarding,
       /boarding/i.test(flight.status || '') ? "Boarding reported" : "Planning estimate—check airline",
     ],
-    ["Departure", depart, flight.actual_out ? "Departed" : "Scheduled"],
+    ["Departure", flight.actual_out||depart, flight.actual_out ? "Departed" : flight.estimated_out ? "Reported estimate" : "Scheduled"],
   ];
   return (
     <section className="turn-timeline">
@@ -1212,10 +1213,10 @@ function TurnTimeline({ flight, inbound }) {
       </div>
       <div className="timeline-steps">
         {steps.map(([label, time, state], i) => (
-          <div className={i === 0 && arrived ? "done" : ""} key={label}>
+          <div className={i === 0 && arrived ? "done" : state.includes("estimate")||label==="Plane preparation"?"inferred":""} key={label}>
             <i />
             <span>{label}</span>
-            <b>{clock(time, flight.origin?.timezone)}</b>
+            <b>{time?clock(time, flight.origin?.timezone):"After gate arrival"}</b>
             <small>{state}</small>
           </div>
         ))}
@@ -2148,9 +2149,10 @@ function TravelerOutlook({ data, future }) {
   const chance=travelerChance(data.delay_index,future,data.cache_fallback?.active,data.refreshed_at);
   return <section className="everyday-outlook projected-delay" aria-label="Your delay outlook">
     <article className={`everyday-chance ${chance.tone}`}>
-      <h3>{chance.label}: <strong className={chance.percent===null?'chance-unavailable':undefined}>{chance.percent!==null?`${chance.percent}%`:'Unavailable'}</strong></h3>
+      <span className="outlook-label">Envolio delay outlook</span>
+      <h3>Chance of leaving 15+ min late: <strong className={chance.percent===null?'chance-unavailable':undefined}>{chance.percent!==null?`${chance.percent}%`:'Unavailable'}</strong></h3>
       {chance.percent!==null&&<div className="chance-meter" aria-hidden="true"><i style={{width:`${chance.percent}%`}}/></div>}
-      <p className="risk-at-glance">{chance.percent===null?'Not enough current data':data.delay_index?.slot_adjustment?'A later air traffic control slot raises the risk.':data.delay_index?.operational_warnings?.[0]?.title||'Based on available flight, airport and weather reports.'}</p>
+
       <small className="estimate-label">{chance.percent===null?'Missing data does not mean on time.':data.delay_index?.calibration?.material_signal&&!data.delay_index?.slot_adjustment?'Estimate · not a guarantee':'Experimental estimate · not a guarantee'}</small>
       <details className="chance-details"><summary>Why this estimate</summary>
       <dl className="chance-explainer"><div><dt>Why</dt><dd>{chance.why}</dd></div><div><dt>Reliability</dt><dd>{chance.reliability}</dd></div><div><dt>Updated</dt><dd>{chance.updated?<time dateTime={chance.updated}>{new Date(chance.updated).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:data.flights?.[0]?.origin?.timezone||'UTC',timeZoneName:'short'})}</time>:'Update time unavailable'}</dd></div></dl>
@@ -2974,6 +2976,7 @@ function FlightDetailV2({
             </span>
           </div>
         )}
+        <section className="flight-summary" data-phase={phase} aria-label="Flight summary">
         <section className="flight-title">
           <div className="carrier-identity">
             <CarrierLogo flight={f} />
@@ -2985,48 +2988,11 @@ function FlightDetailV2({
                   : ""}
               </span>
               <h1>{state.data.diagnostics?.match_type === "codeshare" ? ident : f.ident_iata || f.ident}</h1>
+              <div className="reported-status"><small>Reported status · FlightAware</small><strong>{state.data.cache_fallback?.active?'Saved update':f.status||'Status not reported'}</strong></div>
             </div>
           </div>
           <div className="title-actions">
-            <div className={`operational-status ${signal.tone}`}>
-              {signal.tone === "negative" ? (
-                <TrendingDown size={15} />
-              ) : (
-                <TrendingUp size={15} />
-              )}{" "}
-              {signal.label}
-            </div>
-            <button className="share-button" onClick={share}>
-              <Share2 size={15} /> {shared ? "Link copied" : "Share link"}
-            </button>
-            <button
-              className="share-button results-card-button"
-              onClick={() => setShareCardOpen(true)}
-            >
-              <Download size={15} /> Results card
-            </button>
-            <button
-              className="alerts-button"
-              onClick={() => setAlertsOpen(true)}
-            >
-              <Bell size={15} /> Watch flight
-            </button>
-            <button
-              className={`save-button ${isSaved ? "saved" : ""}`}
-              onClick={() =>
-                toggle({
-                  ident,
-                  date,
-                  origin: f.origin,
-                  destination: f.destination,
-                  operator: f.operator,
-                  snapshot: journeySnapshot(f,state.data.refreshed_at),
-                })
-              }
-            >
-              <Star size={16} fill={isSaved ? "currentColor" : "none"} />{" "}
-              {isSaved ? "Favorited" : "Favorite"}
-            </button>
+            <button className="alerts-button" onClick={()=>{if(!isSaved)toggle({ident,date,origin:f.origin,destination:f.destination,operator:f.operator,snapshot:journeySnapshot(f,state.data.refreshed_at)});setAlertsOpen(true);}}><Bell size={15}/>{isSaved?'Watch settings':'Watch flight'}</button>
           </div>
         </section>
         <RouteChoices
@@ -3040,7 +3006,7 @@ function FlightDetailV2({
         <section className="route-panel">
           <div className="route-date">
             <span>
-              {dateLabel(date)} · times local to each airport
+              Times local to each airport
             </span>
             <div className="route-carrier-preview">
               <CarrierLogo flight={f} />
@@ -3054,12 +3020,14 @@ function FlightDetailV2({
           </div>
           <div className="route-main">
             <div>
+              <span className="reported-label">Reported departure</span>
               <strong>{code(f.origin)}</strong>
               <div className="airport-location">
                 <span>{city(f.origin)}</span>
                 <CountryMarker airport={f.origin} />
               </div>
               <time>{clock(out, f.origin?.timezone)}</time>
+              <span className="arrival-day">{arrivalDay(out,out,f.origin?.timezone,f.origin?.timezone)}</span>
               <FreshnessBadge
                 actual={f.actual_out}
                 estimated={f.estimated_out}
@@ -3068,9 +3036,7 @@ function FlightDetailV2({
                 active={!f.actual_out}
                 cached={state.data.cache_fallback?.active}
               />
-              <small>
-                {f.actual_out?'Actual departure':f.estimated_out?'Expected departure':'Departure'} · Scheduled {clock(f.scheduled_out, f.origin?.timezone)}
-              </small>
+              {out!==f.scheduled_out&&<small>Scheduled {clock(f.scheduled_out, f.origin?.timezone)}</small>}
             </div>
             <div className="route-track">
               <div>
@@ -3085,12 +3051,14 @@ function FlightDetailV2({
               </span>
             </div>
             <div className="destination">
+              <span className="reported-label">Reported arrival</span>
               <strong>{code(f.destination)}</strong>
               <div className="airport-location">
                 <span>{city(f.destination)}</span>
                 <CountryMarker airport={f.destination} />
               </div>
               <time>{clock(arrival, f.destination?.timezone)}</time>
+              <span className="arrival-day">{arrivalDay(out,arrival,f.origin?.timezone,f.destination?.timezone)}</span>
               <FreshnessBadge
                 actual={f.actual_in}
                 estimated={f.estimated_in}
@@ -3100,22 +3068,22 @@ function FlightDetailV2({
                 event="arrival"
                 cached={state.data.cache_fallback?.active}
               />
-              <small>
-                {f.actual_in?'Actual arrival':f.estimated_in?'Expected arrival':'Arrival'} · Scheduled {clock(f.scheduled_in, f.destination?.timezone)}
-              </small>
+              {arrival!==f.scheduled_in&&<small>Scheduled {clock(f.scheduled_in, f.destination?.timezone)}</small>}
             </div>
           </div>
           {phase === 'upcoming' && !f.cancelled && !/cancel/i.test(f.status||'') && <TravelerOutlook data={state.data} future={state.data.schedule_only} />}
-          {phase === 'upcoming' && !state.data.schedule_only && <section className="detail-grid phase-upcoming">
+          {phase === 'upcoming' && !state.data.schedule_only && <section className="summary-assignments phase-upcoming">
               {upcomingDetails.slice(0, 2).map(([label, value]) => (
                 <ChangeAwareValue
                   key={label}
                   label={label}
+                  displayLabel={label.replace("Departure ","").replace(/^./,c=>c.toUpperCase())}
                   value={value}
                   flightKey={`${ident}.${date}`}
                 />
               ))}
             </section>}
+        </section>
         </section>
         {phase === 'upcoming' && <InboundSummary flight={inbound} position={state.data.inbound_position} current={f} refreshed={state.data.refreshed_at} cached={state.data.cache_fallback?.active} rotation={state.data.aircraft_rotation}/>}
         <div className="result-brief">
@@ -3123,7 +3091,7 @@ function FlightDetailV2({
 
         </div>
         {!f.actual_off && !f.actual_in && !f.cancelled && <TakeoffSlot slot={state.data.takeoff_slot} airport={f.origin} scheduled={f.scheduled_out} cached={state.data.cache_fallback?.active}/>}
-        {phase === 'upcoming' && !!state.data.delay_index?.operational_warnings?.length && <details className="operational-warnings" aria-label="Weather and aircraft warnings"><summary>What to watch · {state.data.delay_index.operational_warnings.length} updates</summary><p>These signals can affect your flight. They are not all confirmed causes of a delay.</p>{state.data.delay_index.operational_warnings.map((warning,i)=><details key={`${warning.kind}-${i}`}><summary>{warning.airport?`${warning.airport}: `:''}{warning.title}</summary><p>{warning.detail}</p><small>{warning.source}{warning.issued_at?` · Forecast issued ${new Date(warning.issued_at).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'})}`:''}</small>{warning.periods?.length>0&&<div><p>Forecast periods · your device’s time zone</p>{warning.periods.map((period,n)=><p key={n}>{new Date(period.from).toLocaleString()} – {new Date(period.to).toLocaleString()}{period.weather_probability!=null?` · ${period.weather_probability}% chance of the weather, not of a flight delay`:''}</p>)}</div>}</details>)}</details>}
+        {phase === 'upcoming' && !!state.data.delay_index?.operational_warnings?.length && <details className="operational-warnings" aria-label="Weather and aircraft warnings"><summary>What to watch · {state.data.delay_index.operational_warnings.length} {state.data.delay_index.operational_warnings.length===1?'update':'updates'}</summary><p>These signals can affect your flight. They are not all confirmed causes of a delay.</p>{state.data.delay_index.operational_warnings.map((warning,i)=><details key={`${warning.kind}-${i}`}><summary>{warning.airport?`${warning.airport}: `:''}{warning.title}</summary><p>{warning.detail}</p><small>{warning.source}{warning.issued_at?` · Forecast issued ${new Date(warning.issued_at).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'})}`:''}</small>{warning.periods?.length>0&&<div><p>Forecast periods · your device’s time zone</p>{warning.periods.map((period,n)=><p key={n}>{new Date(period.from).toLocaleString()} – {new Date(period.to).toLocaleString()}{period.weather_probability!=null?` · ${period.weather_probability}% chance of the weather, not of a flight delay`:''}</p>)}</div>}</details>)}</details>}
         {phase === "upcoming" ? (
           <>
 
@@ -3140,6 +3108,7 @@ function FlightDetailV2({
         <details className="traveler-details weather-overview"><summary>Weather &amp; airport updates</summary><TravelIntelligence ident={ident} date={date} origin={origin} destination={destination} departure={departure} refreshed={state.data.refreshed_at} cached={state.data.cache_fallback?.active} onRefresh={refresh} hideConnection externalConnection={connectionCheck} flightDeparture={f.estimated_out||f.scheduled_out} flightArrival={f.estimated_in||f.scheduled_in}/></details>
         <details className="traveler-details flight-analysis"><summary><span>Flight history &amp; explanation</span><small>Charts, contributing factors, and sources</small></summary>
           {phase === 'upcoming' && <RiskContext index={state.data.delay_index} cached={state.data.cache_fallback?.active}/>}
+          <button className="secondary traveler-export" onClick={share}><Share2 size={16}/> {shared?"Link copied":"Share flight link"}</button>
           <button className="secondary traveler-export" onClick={() => setShareCardOpen(true)}><Download size={16}/> Download a flight card</button>
           <DelayReasoning data={state.data.delay_reasoning} cached={state.data.cache_fallback?.active} />
           <ProbabilityIndex index={state.data.delay_index} phase={phase} />
@@ -3172,12 +3141,12 @@ function FlightDetailV2({
           </p>
         </section></details>
       </main>
-      <AlertEmitter
+      {isSaved&&!state.data.cache_fallback?.active&&<AlertEmitter
         flight={f}
         inbound={inbound}
         index={state.data.delay_index}
         flightKey={`${ident}.${date}`}
-      />
+      />}
       <Footer go={go} />
       <AlertSettings
         key={`${ident}.${date}`}
@@ -3201,7 +3170,7 @@ function FlightDetailV2({
 export default function App() {
   const [route, go] = useRoute(),
     s = useSaved();
-  return <WebShell go={go}>{s.storageError&&<div className="storage-warning" role="status">This browser couldn’t save your changes. Favorites are available for this visit only.</div>}{route.page === 'flight'
+  return <WebShell go={go}>{s.storageError&&<div className="storage-warning" role="status">This browser couldn’t save your changes. Saved flights are available for this visit only.</div>}{route.page === 'flight'
     ? <FlightDetailV2 key={[route.ident,route.date,route.origin,route.destination,route.departure].join('|')} {...route} go={go} saved={s.saved} toggle={s.toggle}/>
     : route.page !== 'home' ? <ExplorePage route={route} go={go} saved={s.saved} remove={s.remove}/>
     : <Home go={go} saved={s.saved} remove={s.remove}/>}</WebShell>;

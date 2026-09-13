@@ -92,7 +92,7 @@ export function forecastAt(result, target, now = Date.now()) {
   const describe = r => {
     const weather = (r.wx_codes || []).map(w=>w.value || w.repr).filter(Boolean);
     if (Number.isFinite(r.wind?.gust ?? r.wind?.speed)) weather.push(`wind ${r.wind.gust ?? r.wind.speed} kt`);
-    if (['IFR','LIFR'].includes(r.flight_rules)) weather.push('low cloud or visibility');
+    if (['IFR','LIFR'].includes(r.flight_rules)) weather.push('Poor flying conditions reported; cloud height and visibility are not specified');
     return weather.join(' · ') || 'No significant weather listed in this period';
   };
   return {...base,status:'available',valid_from:p.start_time,valid_until:p.end_time,summary:describe(baseline),

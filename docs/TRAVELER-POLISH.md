@@ -4,7 +4,7 @@ The home screen shows the next saved trip, not an extra live-provider request. S
 
 Route filters use confirmed marketing identifiers and origin-local departure times. Unknown times remain visible in “Any time”; no invented local time is used. Forecast windows use only returned, time-valid Skylink TAF periods near the flight; weather likelihood is never relabeled as flight-delay likelihood.
 
-The changes strip compares prior local successful checks of the same flight leg, ignores missing fields, and does not describe cached/offline data as a new live update. Navigation has its own reserved space, rather than covering the page.
+The changes strip compares prior local successful checks of the same flight leg, ignores missing fields, and does not describe cached/offline data as a new live update. Navigation is now a compact floating Search/Saved pill with no opaque shelf. Bottom page spacing keeps the last content reachable; the dock hides during mobile search editing. Watch flight saves first, and notification settings are attached to each saved flight.
 
 ## Text/email delivery: external prerequisites
 

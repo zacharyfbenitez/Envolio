@@ -20,6 +20,20 @@ function periodRisk(p){
  const risk=Math.min(1,.08+(Number.isFinite(gust)&&gust>=35?.5:Number.isFinite(gust)&&gust>=22?.2:0)+(vis!==null&&vis<3?.3:0)+(ceiling<1000?.3:0)+(severe(p.wxString)?.5:0));
  return Number.isFinite(p.probability)?risk*Math.min(1,Math.max(0,p.probability/100)):risk;
 }
+export function forecastConditions(periods){
+ const details=[];const wx=periods.map(p=>p.wxString||'').join(' ');
+ if(/TS|thunderstorm/i.test(wx))details.push('Thunderstorms');
+ if(/FZRA|freezing rain/i.test(wx))details.push('Freezing rain');
+ if(/SN|snow/i.test(wx))details.push('Snow');
+ if(/FG|fog/i.test(wx))details.push('Fog');
+ const ceilings=periods.flatMap(p=>(p.clouds||[]).filter(c=>['BKN','OVC','VV'].includes(c.cover)&&Number.isFinite(c.base)&&c.base<1000).map(c=>c.base));
+ const visibility=periods.map(p=>p.visib).filter(v=>typeof v==='number'&&v<3);
+ const winds=periods.map(p=>p.wgst??p.wspd).filter(v=>Number.isFinite(v)&&v>=22);
+ if(ceilings.length)details.push(`Cloud ceiling as low as ${Math.min(...ceilings)} ft`);
+ if(visibility.length)details.push(`Visibility as low as ${Math.min(...visibility)} ${Math.min(...visibility)===1?'mile':'miles'}`);
+ if(winds.length)details.push(`Winds up to ${Math.max(...winds)} knots`);
+ return details;
+}
 export function assessTaf(result,icao,target,now=Date.now()){
  const receipt={provider:'NOAA Aviation Weather Center',endpoint:`https://aviationweather.gov/api/data/taf?ids=${icao}&format=json`,retrieved_at:result?.retrieved_at||null};
  const unavailable=reason=>({...receipt,status:'unavailable',reason,score:null,warnings:[]});
@@ -33,8 +47,7 @@ export function assessTaf(result,icao,target,now=Date.now()){
  const currentStorms=relevant.filter(p=>severe(p.wxString));
  const earlier=periods.filter(p=>severe(p.wxString)&&epoch(p.timeTo)<=at-3600000&&epoch(p.timeTo)>at-12*3600000);
  const warnings=[];
- if(currentStorms.length)warnings.push({kind:'flight_weather',title:'Disruptive weather near flight time',detail:'The airport forecast includes thunderstorms or other disruptive weather within an hour of this flight’s planned time. Delays are possible, not confirmed.'});
- else if(Math.max(...relevant.map(periodRisk))>=.35)warnings.push({kind:'flight_weather',title:'Low cloud, visibility or wind may affect flight time',detail:'The forecast includes poor visibility, low cloud or strong wind around the planned flight time. Those conditions can slow airport operations; a delay is not confirmed.'});
+ if(currentStorms.length||Math.max(...relevant.map(periodRisk))>=.35){const conditions=forecastConditions(currentStorms.length?currentStorms:relevant);warnings.push({kind:'flight_weather',title:`${conditions.slice(0,2).join(' · ')||'Forecast disruption signal'} near flight time`,detail:`${conditions.join('; ')||'The returned forecast contains a disruption signal'}. These conditions are forecast at this airport within an hour of the planned flight time. They may slow arrivals or departures; an airport restriction or a flight delay is not confirmed.`});}
  if(!currentStorms.length&&earlier.length)warnings.push({kind:'earlier_weather',title:'Earlier weather may affect incoming flights',detail:'Disruptive weather is forecast earlier in the day, but no thunderstorm period matches this flight’s time window. Aircraft or airport delays can continue afterward; carry-over is not confirmed.'});
  return {...receipt,status:'available',score:Math.max(...relevant.map(periodRisk)),issued_at:taf.issueTime,target_at:target,raw:taf.rawTAF,warnings:warnings.map(w=>({...w,source:receipt.provider,issued_at:taf.issueTime,periods:(w.kind==='earlier_weather'?earlier:currentStorms.length?currentStorms:relevant.filter(p=>periodRisk(p)>=.35)).map(p=>({from:new Date(epoch(p.timeFrom)).toISOString(),to:new Date(epoch(p.timeTo)).toISOString(),weather:p.wxString,weather_probability:p.probability??null}))})),policy:'Highest applicable forecast pressure replaces, rather than adds to, current weather pressure. Weather probabilities are not delay probabilities; earlier weather produces a warning only.'};
 }
