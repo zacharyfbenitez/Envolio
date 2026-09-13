@@ -41,3 +41,16 @@ export function scheduleCandidates(rows,{date,origin,destination,airport,normali
  }
  return [...unique.values()].sort((a,b)=>a.scheduled_out.localeCompare(b.scheduled_out)).slice(0,40);
 }
+// Only merge the same identifiers, route and scheduled gate departure; never a nearby leg.
+export function mergeRouteStatus(schedules,payload,checkedAt){
+ const direct=rows=>rows.flatMap(r=>r.segments?(r.segments.length===1?r.segments:[]):[r]);
+ const rows=direct([...(payload?.flights||[]),...(payload?.scheduled_departures||[]),...(payload?.departures||[]),...(payload?.connections||[])]);
+ const ids=f=>[f.ident,f.ident_iata,...(f.codeshares||[]),...(f.codeshares_iata||[])].filter(Boolean);
+ const sameAirport=(a,b)=>[a?.code,a?.code_iata,a?.code_icao].filter(Boolean).some(c=>[b?.code,b?.code_iata,b?.code_icao].includes(c));
+ return schedules.map(f=>{
+  const matches=rows.filter(r=>Date.parse(r.scheduled_out)===Date.parse(f.scheduled_out)&&sameAirport(r.origin,f.origin)&&sameAirport(r.destination,f.destination)&&ids(r).some(id=>ids(f).includes(id)));
+  if(matches.length!==1)return f;
+  const live=matches[0];
+  return {...f,...live,origin:{...f.origin,...live.origin},destination:{...f.destination,...live.destination},codeshares:[...new Set([...ids(f).filter(id=>id!==f.ident&&id!==f.ident_iata),...(live.codeshares||[]),...(live.codeshares_iata||[])])],schedule_only:false,source:'FlightAware flight status',status_checked_at:checkedAt};
+ });
+}

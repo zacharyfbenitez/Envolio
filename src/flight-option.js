@@ -9,7 +9,7 @@ export function flightOptionIdentity(flight,preferred=''){
  const regional=regionalCodes.has(operator)||regionalCodes.has(flight.ident?.match(/^[A-Z]{3}/)?.[0])||regionalCodes.has(operating.match(/^([A-Z]{3}|[A-Z0-9]{2})(?=\d)/)?.[0]);
  // A regional operator is not enough to invent a marketing flight number.
  const preferredMatch=majors.find(v=>v.startsWith(preferred));
- const display=regional?(preferred&&preferredMatch?preferredMatch:majors.length===1?majors[0]:operating):operating;
+ const display=regional?(preferred&&preferredMatch?preferredMatch:majors[0]||operating):operating;
  return {display,operating,marketing:display!==operating,alternates:codes.filter(v=>v!==display),carrier:display.match(/^([A-Z0-9]{2})(?=\d)/)?.[1]||flight.operator_iata||flight.operator||''};
 }
 export function flightOptionStatus(flight){
@@ -22,7 +22,7 @@ export function flightOptionStatus(flight){
  if(!flight.schedule_only&&(delay>=15||/delay/i.test(status)))return {tone:'delayed',label:Number.isFinite(delay)&&delay>=15?`${Math.round(delay)} min delayed`:'Delayed'};
  if(!flight.schedule_only&&/on[ -]?time/i.test(status))return {tone:'on-time',label:'On time'};
  if(!flight.schedule_only&&/board/i.test(status))return {tone:'airborne',label:'Boarding'};
- return {tone:'scheduled',label:flight.schedule_only||/scheduled/i.test(status)?'Scheduled · live status not checked':'Status not reported'};
+ return {tone:'scheduled',label:flight.schedule_only?'Schedule only · open for updates':/scheduled/i.test(status)?'Scheduled':'Status unavailable'};
 }
 export function travelerFlightLabel(flight){
  const identity=flightOptionIdentity(flight);

@@ -4,7 +4,7 @@ import {airlines,airportSuggestions,parseSearch,resolveAirport,validDate,putSear
 import {readJourneys,RECENT_KEY,airportCode} from './journeys.js';
 import './flight-search.css';
 import CarrierLogo from './CarrierLogo.jsx';
-import {flightOptionIdentity,flightOptionStatus} from './flight-option.js';
+import {flightOptionIdentity,flightOptionStatus,travelerFlightLabel} from './flight-option.js';
 const localDay=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*60000).toISOString().slice(0,10);};
 const code=a=>a?.code_iata||a?.code?.replace(/^K(?=[A-Z]{3}$)/,'')||a?.code_icao||'';
 const time=(stamp,zone)=>{if(!stamp)return 'Time not published';try{return new Date(stamp).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit',timeZone:zone||'UTC'})+(zone?'':' UTC');}catch{return 'Time not published';}};
@@ -14,9 +14,10 @@ function AirportField({label,value,onChange,id}){
 }
 function FlightOption({flight,fallback,preferred,onSelect}){
  const identity=flightOptionIdentity(flight,preferred),status=flightOptionStatus(flight);
- const airline=airlines.find(a=>a.code===identity.carrier)?.name||flight.operator||'Airline not reported';
+ const uncertain=travelerFlightLabel(flight)==='Flight number not confirmed';
+ const airline=airlines.find(a=>a.code===identity.carrier)?.name||(uncertain?'Airline number not confirmed':flight.operator||'Airline not reported');
  return <button className={`finder-match status-${status.tone}`} onClick={()=>onSelect(identity.display||fallback)}>
-  <span className="finder-carrier"><CarrierLogo flight={{operator_iata:identity.carrier.length===2?identity.carrier:'',ident_iata:identity.display,operator:airline}}/><span><b>{identity.display||fallback}</b><small>{airline}</small>{identity.marketing&&<small>Operated as {identity.operating}</small>}</span></span>
+  <span className="finder-carrier"><CarrierLogo flight={{operator_iata:uncertain?'':identity.carrier.length===2?identity.carrier:'',ident_iata:uncertain?'':identity.display,operator:airline}}/><span><b>{uncertain?'Flight option':identity.display||fallback}</b><small>{airline}</small></span></span>
   <span className="finder-route"><b>{code(flight.origin)} → {code(flight.destination)}</b><small>{time(flight.actual_out||flight.estimated_out||flight.scheduled_out,flight.origin?.timezone)} {flight.actual_out?'departed':flight.estimated_out?'departure · estimated':'departure'}</small><span className="finder-status">{status.label}</span>{identity.alternates.length>0&&<small>Also listed as {identity.alternates.slice(0,3).join(' / ')}</small>}</span><ArrowRight size={18}/>
  </button>;
 }

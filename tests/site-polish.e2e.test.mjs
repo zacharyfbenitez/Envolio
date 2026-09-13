@@ -7,6 +7,8 @@ import {sq12Lookup} from './fixtures/flight-lookups.mjs';
 test('main-site polish: compact inbound-first results, codeshares and no video', {timeout:180000}, async t => {
  const app=express();
  const prefix='/p/bUpWZzvZpIOeEaBV-xsmW/5173';
+ app.get('/api/airports/JFK/pressure',(_req,res)=>res.json({airport:'JFK',score:45,items:[{kind:'runway',label:'Runway closure notice',evidence:'RWY 13R/31L CLSD',score:45,source:'Fixture notice'},{kind:'weather',label:'Latest airport weather',evidence:'MVFR',score:0,source:'Fixture weather'}],missing:[],updated_at:new Date().toISOString(),method:'Partial airport conditions, not flight delay probability.'}));
+ app.get('/api/flight-search',(_req,res)=>res.json({flights:[{ident:'YX4397',codeshares:['AA4397','AS4227','AT5115'],origin:{code_iata:'JFK',timezone:'America/New_York'},destination:{code_iata:'BOS'},scheduled_out:'2026-09-13T19:30:00Z',estimated_out:'2026-09-13T19:50:00Z',status:'Delayed',schedule_only:false}],source:'Fixture live route status'}));
  app.use((req,_res,next)=>{if(req.url.startsWith(prefix))req.url=req.url.slice(prefix.length)||'/';next();});
  app.get('/api/flights/:ident',(_req,res)=>{
   const data=sq12Lookup('2026-09-15');
@@ -36,6 +38,18 @@ test('main-site polish: compact inbound-first results, codeshares and no video',
   assert.equal(await page.$('video'),null);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   assert.ok(await page.$$eval('.seo-links button',es=>es.every(e=>parseFloat(getComputedStyle(e).fontSize)>=14)));
+  await page.$eval('.home-about',e=>e.open=true);
+  assert.ok(await page.$$eval('.home-about .product-notes>div',es=>es.every(e=>parseFloat(getComputedStyle(e).paddingLeft)>=20)));
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  assert.equal(await page.$eval('.sky-plane',e=>getComputedStyle(e).animationName),'none');
+  if(width<1200)assert.equal(await page.$eval('.home-sky',e=>getComputedStyle(e).display),'none');
+  await page.type('.airport-explorer input','JFK');
+  await page.$eval('.airport-explorer form',e=>e.requestSubmit());
+  await page.waitForSelector('.airport-pressure');
+  assert.match(await page.$eval('.airport-condition-grid',e=>e.textContent),/Low clouds or reduced visibility/);
+  assert.doesNotMatch(await page.$eval('.airport-condition-grid',e=>e.textContent),/MVFR|CLSD/);
+  assert.equal(await page.$eval('.airport-pressure details',e=>e.open),false);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   if(process.env.POLISH_SCREENSHOTS)await page.screenshot({path:`/tmp/envolio-polished-home-${width}.png`,fullPage:true});
   await page.goto(base+'/flight/AA4397?date=2026-09-15',{waitUntil:'domcontentloaded'});await page.waitForSelector('.flight-title h1').catch(error=>{throw new Error(`${error.message}; browser errors: ${errors.join('; ')}`);});
   assert.equal(await page.$eval('.flight-title h1',e=>e.textContent),'AA4397');
@@ -62,5 +76,11 @@ test('main-site polish: compact inbound-first results, codeshares and no video',
  assert.equal(await page.$('video'),null);
  await page.hover('.example-flight');
  await page.waitForFunction(()=>getComputedStyle(document.querySelector('.example-flight')).transform!=='none');
+ await page.goto(base+'/?q=JFK%20to%20BOS&date=2026-09-13',{waitUntil:'domcontentloaded'});
+ await page.waitForSelector('.finder-form');await page.$eval('.finder-form',e=>e.requestSubmit());
+ await page.waitForSelector('.finder-match');
+ assert.match(await page.$eval('.finder-carrier',e=>e.textContent),/AA4397/);
+ assert.doesNotMatch(await page.$eval('.finder-carrier',e=>e.textContent),/YX|RPA/);
+ assert.match(await page.$eval('.finder-status',e=>e.textContent),/20 min delayed/);
  assert.deepEqual(errors,[]);
 });

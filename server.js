@@ -5,7 +5,7 @@ import {RISK_RELEASE,scoreAudit,airportIndicators,historicalTrend} from './risk-
 import {monitor,monitoringSummary} from './risk-monitor.js';
 import {apiGuard,publicFeedback} from './web-security.js';
 import {loadTaf,observationRisk,traceRotation,rotationRisk} from './operational-risk.js';
-import {validateRouteQuery,scheduleCandidates,originDayWindow} from './route-search.js';
+import {validateRouteQuery,scheduleCandidates,originDayWindow,mergeRouteStatus} from './route-search.js';
 import { buildDelayReasoning, loadFaaAdvisories } from './delay-reasoning.js';
 import { loadSkylinkContext, skylink, receipt, metarWeather, compareStatus } from './skylink.js';
 import { completedHistory, routeValidation } from './validation.js';
@@ -357,8 +357,14 @@ app.get('/api/flight-search',async(req,res)=>{
   const params=new URLSearchParams({origin:query.origin,destination:query.destination,max_pages:'3',...(query.airline?{airline:query.airline}:{})});
   const result=await aeroResult(`/schedules/${start}/${end}?${params}`);
   if(!result.ok)return res.status(result.status===429?429:503).json({error:result.status===429?'Schedule search is busy. Please try again shortly.':result.status===401||result.status===403?'The connected data plan doesn’t allow this schedule search. Use the flight number from your booking confirmation.':'The schedule provider couldn’t complete this search. Try your flight number instead.',source:'FlightAware schedules'});
-  const flights=scheduleCandidates(result.data.scheduled||[],{...query,airport,normalize:normalizeScheduledFlight,localDate:departureDate});
-  const data={flights,source:'FlightAware published schedules',retrieved_at:new Date().toISOString(),partial:!!result.data.links?.next,note:'Published schedules, not a complete list of every flight or a guarantee of operation. Check your booking confirmation before choosing.'};
+  let flights=scheduleCandidates(result.data.scheduled||[],{...query,airport,normalize:normalizeScheduledFlight,localDate:departureDate});
+  const retrieved=new Date().toISOString();let statusNote='Live updates appear closer to departure.',statusPartial=false;
+  if(Date.parse(start)<Date.now()+48*3600000){
+   const live=await aeroResult(`/airports/${query.origin}/flights/to/${query.destination}?${new URLSearchParams({start,end,max_pages:'2'})}`);
+   if(live.ok){flights=mergeRouteStatus(flights,live.data,retrieved);statusPartial=!!live.data.links?.next;statusNote='Flight status shown where matched. Schedule-only flights need an individual check.';}
+   else statusNote=live.status===429?'Live updates are temporarily rate-limited. Open your flight to retry.':[401,403].includes(live.status)?'Live route updates are not available on the connected data plan. Open a flight for an individual check.':'Live route updates are temporarily unavailable. Open a flight to retry.';
+  }
+  const data={flights,source:flights.some(f=>!f.schedule_only)?'FlightAware schedules & flight status':'FlightAware published schedules',retrieved_at:retrieved,partial:!!result.data.links?.next||statusPartial,note:statusNote};
   routeSearchCache.set(key,{at:Date.now(),data});if(routeSearchCache.size>100)routeSearchCache.delete(routeSearchCache.keys().next().value);
   res.json(data);
  }catch{res.status(503).json({error:'Schedule search is temporarily unavailable. Try a flight number or retry in a moment.'});}
