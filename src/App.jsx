@@ -5,7 +5,7 @@ import {searchKey,takeSearchResult} from './flight-search.js';
 import {rememberFlight,readJourneys,SAVED_KEY,journeyUrl} from './journeys.js';
 import { travelAdvice } from './travel-advice.js';
 import TravelIntelligence from './TravelIntelligence.jsx';
-import {travelerChance} from './traveler-presentation.js';
+import {travelerChance,flightTimingStatus} from './traveler-presentation.js';
 import InboundSummary from './InboundSummary.jsx';
 import RiskContext from './RiskContext.jsx';
 import TakeoffSlot from './TakeoffSlot.jsx';
@@ -2002,24 +2002,11 @@ function FreshnessBadge({
   scheduled,
   latest,
   active = false,
+  event = 'departure',
+  cached = false,
 }) {
-  const meaningfulEstimate =
-    estimated &&
-    (!scheduled ||
-      new Date(estimated).getTime() !== new Date(scheduled).getTime());
-  let label = actual
-      ? "Actual"
-      : meaningfulEstimate
-        ? "Estimated"
-        : scheduled
-          ? "Scheduled"
-          : "Unavailable",
-    tone = label.toLowerCase();
-  if (active && latest && Date.now() - new Date(latest).getTime() > 20 * 60e3) {
-    label = "Stale";
-    tone = "stale";
-  }
-  return <span className={`freshness-badge ${tone}`}>{label}</span>;
+  const {label,tone}=flightTimingStatus({actual,estimated,scheduled,latest,active,event,cached});
+  return <span className={`freshness-badge ${tone}`} title={actual?'Reported actual gate time':estimated?'Latest reported gate-time estimate; it can still change.':'Original scheduled gate time'}>{label}</span>;
 }
 const shortSource = (source) =>
   source?.includes("Aviation Weather")
@@ -3182,13 +3169,12 @@ function FlightDetailV2({
                 actual={f.actual_out}
                 estimated={f.estimated_out}
                 scheduled={f.scheduled_out}
-                latest={state.data.flight_position?.timestamp}
-                active={phase === "inflight"}
+                latest={state.data.refreshed_at}
+                active={!f.actual_out}
+                cached={state.data.cache_fallback?.active}
               />
               <small>
-                {delay > 0
-                  ? `${delay} min after schedule`
-                  : `Scheduled ${clock(f.scheduled_out, f.origin?.timezone)}`}
+                {f.actual_out?'Actual departure':f.estimated_out?'Expected departure':'Departure'} · Scheduled {clock(f.scheduled_out, f.origin?.timezone)}
               </small>
             </div>
             <div className="route-track">
@@ -3214,11 +3200,13 @@ function FlightDetailV2({
                 actual={f.actual_in}
                 estimated={f.estimated_in}
                 scheduled={f.scheduled_in}
-                latest={state.data.flight_position?.timestamp}
-                active={phase === "inflight"}
+                latest={state.data.refreshed_at}
+                active={!f.actual_in}
+                event="arrival"
+                cached={state.data.cache_fallback?.active}
               />
               <small>
-                Scheduled {clock(f.scheduled_in, f.destination?.timezone)}
+                {f.actual_in?'Actual arrival':f.estimated_in?'Expected arrival':'Arrival'} · Scheduled {clock(f.scheduled_in, f.destination?.timezone)}
               </small>
             </div>
           </div>

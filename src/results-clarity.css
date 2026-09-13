@@ -1,4 +1,6 @@
 /* Traveler-first results: clear hierarchy, useful colors, and readable evidence. */
+.inbound-arrival-status{display:block;width:fit-content;max-width:100%;box-sizing:border-box;margin-top:8px;padding:5px 9px;border-radius:10px;font-size:14px;line-height:1.5;font-weight:700;overflow-wrap:anywhere;background:#ffffff0d;color:#d5d7df;border:1px solid #ffffff25}
+.inbound-arrival-status.late{color:#ffda96;background:#b674201c;border-color:#e3b46560}.inbound-arrival-status.on-time{color:#a5edc8;background:#397d5326;border-color:#75c79860}
 .home-page .home-showcase{padding:0!important}
 .home-showcase .showcase-heading{position:relative}.home-showcase .showcase-heading p,.home-showcase .showcase-heading>span{color:#e0e3ed}
 .home-showcase .showcase-stage{background:#15161be8}.home-showcase .showcase-route,.home-showcase .showcase-index{background:#1d1e24f5}

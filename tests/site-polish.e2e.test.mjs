@@ -11,6 +11,9 @@ test('main-site polish: compact inbound-first results, codeshares and no video',
  app.get('/api/flights/:ident',(_req,res)=>{
   const data=sq12Lookup('2026-09-15');
   data.flights[0].ident_iata='YX4397';data.flights[0].operator='Republic Airways';
+  data.flights[0].estimated_out=new Date(Date.parse(data.flights[0].scheduled_out)+20*60000).toISOString();
+  data.refreshed_at=new Date().toISOString();
+  data.inbound_aircraft={ident:'RPA4633',status:'En Route',origin:data.flights[0].destination,destination:data.flights[0].origin,scheduled_in:new Date(Date.now()+3600000).toISOString(),estimated_in:new Date(Date.now()+4920000).toISOString()};
   data.diagnostics={...data.diagnostics,match_type:'codeshare'};data.route_options=[];
   res.json(data);
  });
@@ -37,6 +40,8 @@ test('main-site polish: compact inbound-first results, codeshares and no video',
   assert.equal(await page.$eval('.flight-title h1',e=>e.textContent),'AA4397');
   assert.match(await page.$eval('.carrier-identity',e=>e.textContent),/operated as YX4397/);
   assert.equal(await page.$eval('.inbound-details',e=>e.open),false);
+  assert.equal(await page.$eval('.inbound-arrival-status',e=>e.textContent),'Expected 22 min late');
+  assert.equal(await page.$eval('.route-main .freshness-badge',e=>e.textContent),'Delayed 20 min');
   assert.equal(await page.$eval('.chance-details',e=>e.open),false);
   assert.ok(await page.evaluate(()=>document.querySelector('.inbound-summary').getBoundingClientRect().top<document.querySelector('.result-brief').getBoundingClientRect().top),'Incoming plane before advice and risk');
   await page.click('.inbound-details>summary');

@@ -1,6 +1,30 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {travelerChance,weatherWords,inboundOverview} from '../src/traveler-presentation.js';
+import {travelerChance,weatherWords,inboundOverview,inboundArrivalStatus,flightTimingStatus} from '../src/traveler-presentation.js';
+test('route times show delays while distinguishing estimates from actuals',()=>{
+ const f={scheduled:'2026-09-13T19:30:00Z',estimated:'2026-09-13T19:50:00Z'};
+ assert.equal(flightTimingStatus(f).label,'Delayed 20 min');
+ assert.equal(flightTimingStatus({...f,actual:'2026-09-13T19:55:00Z'}).label,'Departed 25 min late');
+ assert.equal(flightTimingStatus({...f,event:'arrival',actual:f.estimated}).label,'Arrived 20 min late');
+ assert.equal(flightTimingStatus({...f,estimated:f.scheduled}).label,'Expected on time');
+ assert.equal(flightTimingStatus({scheduled:f.scheduled}).label,'Scheduled');
+ assert.equal(flightTimingStatus({...f,cached:true}).label,'Saved update');
+ assert.equal(flightTimingStatus({...f,active:true}).label,'Refresh to check');
+});
+test('inbound gate status compares scheduled gate arrival, never landing or next departure',()=>{
+ const now=Date.parse('2026-09-13T17:00:00Z'),options={now,refreshed:new Date(now).toISOString()};
+ const f={scheduled_in:'2026-09-13T18:30:00Z',estimated_in:'2026-09-13T18:52:00Z'};
+ assert.deepEqual(inboundArrivalStatus(f,options),{tone:'late',label:'Expected 22 min late'});
+ assert.equal(inboundArrivalStatus({...f,estimated_in:f.scheduled_in},options).label,'Expected on time');
+ assert.equal(inboundArrivalStatus({...f,estimated_in:'2026-09-13T18:20:00Z'},options).label,'Expected 10 min early');
+ assert.equal(inboundArrivalStatus({...f,actual_in:'2026-09-13T18:35:00Z'},options).label,'Arrived 5 min late');
+ assert.equal(inboundArrivalStatus({scheduled_in:f.scheduled_in,actual_on:f.scheduled_in},options).tone,'unknown');
+ assert.equal(inboundArrivalStatus({...f,scheduled_in:null},options).tone,'unknown');
+ assert.equal(inboundArrivalStatus(f,{...options,cached:true}).tone,'unknown');
+ assert.equal(inboundArrivalStatus(f,{...options,refreshed:'2026-09-13T16:00:00Z'}).tone,'unknown');
+ assert.equal(inboundArrivalStatus({...f,cancelled:true},options).tone,'unknown');
+ assert.equal(inboundArrivalStatus({scheduled_in:'2026-09-13T23:55:00Z',estimated_in:'2026-09-14T00:15:00Z'},options).label,'Expected 20 min late');
+});
 test('backend percentage is preserved, experimental and incomplete estimates are explicit',()=>{
  const index={score:32,factors:[{key:'route',value:25,weight:.28},{key:'inbound',value:75,weight:.2}],calibration:{material_signal:false,route:{sample_size:12,delay_rate:25}}};
  assert.equal(travelerChance(index).percent,32);

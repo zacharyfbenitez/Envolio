@@ -1,4 +1,29 @@
 const signalNames={route:'recent route history',airline:'airline operations',inbound:'incoming aircraft timing',origin_airport:'departure airport conditions',arrival_airport:'arrival airport conditions',origin_weather:'departure weather',arrival_weather:'arrival weather',schedule:'the latest departure estimate'};
+export function flightTimingStatus({actual,estimated,scheduled,latest,active=false,event='departure',cached=false,now=Date.now()}){
+ const valid=v=>Number.isFinite(Date.parse(v));
+ if(cached)return {label:'Saved update',tone:'stale'};
+ if(active&&(!valid(latest)||now-Date.parse(latest)>20*60000))return {label:'Refresh to check',tone:'stale'};
+ const happened=valid(actual),expected=valid(estimated),value=happened?actual:expected?estimated:null;
+ if(!value)return {label:valid(scheduled)?'Scheduled':'Unavailable',tone:valid(scheduled)?'scheduled':'unavailable'};
+ const minutes=Math.round((Date.parse(value)-Date.parse(scheduled))/60000);
+ const verb=event==='arrival'?'Arrived':'Departed';
+ if(!Number.isFinite(minutes))return {label:happened?verb:'Estimated',tone:happened?'actual':'estimated'};
+ if(minutes>0)return {label:happened?`${verb} ${minutes} min late`:`Delayed ${minutes} min`,tone:'estimated'};
+ return {label:happened?`${verb} ${minutes<0?`${-minutes} min early`:'on time'}`:minutes<0?`Expected ${-minutes} min early`:'Expected on time',tone:'actual'};
+}
+export function inboundArrivalStatus(flight,{cached=false,refreshed,now=Date.now()}={}){
+ const unknown={tone:'unknown',label:'Arrival timing unknown'};
+ if(!flight)return unknown;
+ if(cached)return {tone:'unknown',label:'Saved timing · refresh to check'};
+ if(flight.cancelled||/cancel|divert/i.test(flight.status||''))return {tone:'unknown',label:'Arrival needs confirmation'};
+ const actual=Date.parse(flight.actual_in),estimated=Date.parse(flight.estimated_in),scheduled=Date.parse(flight.scheduled_in);
+ const arrived=Number.isFinite(actual),latest=arrived?actual:estimated;
+ const age=now-Date.parse(refreshed);
+ if(!Number.isFinite(scheduled)||!Number.isFinite(latest))return unknown;
+ if(!arrived&&(!Number.isFinite(age)||age>300000||age< -60000||estimated<now-900000))return {tone:'unknown',label:'Timing needs a fresh update'};
+ const minutes=Math.round((latest-scheduled)/60000),prefix=arrived?'Arrived':'Expected';
+ return {tone:minutes>0?'late':'on-time',label:minutes>0?`${prefix} ${minutes} min late`:minutes<0?`${prefix} ${Math.abs(minutes)} min early`:`${prefix} on time`};
+}
 export function inboundOverview(flight,current,position,cached=false,now=Date.now()){
  if(!flight)return {title:'Your incoming plane isn’t confirmed yet',advice:'We’ll show its previous flight when an aircraft is assigned. Keep following your airline’s boarding time.',tone:'neutral',map:false};
  const arrival=flight.actual_in||flight.estimated_in||flight.scheduled_in;
