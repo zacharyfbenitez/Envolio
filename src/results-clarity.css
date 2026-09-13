@@ -1,4 +1,10 @@
 /* Traveler-first results: clear hierarchy, useful colors, and readable evidence. */
+.inbound-aircraft-facts>div{min-width:0;overflow-wrap:anywhere}.inbound-history-heading{font-size:18px;margin:20px 0 12px;color:#f5f5fa}
+.inbound-flight-list{display:grid;gap:10px;padding:0;margin:0;list-style:none}.inbound-flight-list li{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:16px;min-width:0;border:1px solid #ffffff24;border-radius:16px;background:#ffffff05}
+.inbound-leg-title{display:flex;flex:1 1 160px;min-width:0;flex-direction:column;gap:4px;overflow-wrap:anywhere}.inbound-leg-title strong{font-size:18px;color:#fff}.inbound-leg-title span,.inbound-flight-list small{font-size:14px;line-height:1.5;color:#d1cedc}.inbound-flight-list small{flex-basis:100%;overflow-wrap:anywhere}
+.inbound-leg-status{font-size:14px;line-height:1.5;padding:4px 8px;border-radius:8px;color:#d1cedc;background:#ffffff0a;max-width:100%;box-sizing:border-box;overflow-wrap:anywhere}.inbound-leg-status.arrived,.inbound-leg-status.on-time{color:#a5edc8;background:#397d5326}.inbound-leg-status.airborne{color:#c9bcff;background:#8872d526}.inbound-leg-status.delayed,.inbound-leg-status.cancelled{color:#ffda96;background:#b674201c}
+.inbound-summary .inbound-origin{display:flex;align-items:baseline;gap:8px;margin:12px 0 0;font-size:16px;line-height:1.5;color:#d5d7df;overflow-wrap:anywhere}
+.inbound-origin>svg{flex:0 0 16px;align-self:flex-start;margin-top:4px}.inbound-origin>span{min-width:0}.inbound-origin strong{color:#f5f5fa;font-weight:700}.inbound-origin-code{white-space:nowrap;color:#c9cbd6}
 .inbound-arrival-status{display:block;width:fit-content;max-width:100%;box-sizing:border-box;margin-top:8px;padding:5px 9px;border-radius:10px;font-size:14px;line-height:1.5;font-weight:700;overflow-wrap:anywhere;background:#ffffff0d;color:#d5d7df;border:1px solid #ffffff25}
 .inbound-arrival-status.late{color:#ffda96;background:#b674201c;border-color:#e3b46560}.inbound-arrival-status.on-time{color:#a5edc8;background:#397d5326;border-color:#75c79860}
 .home-page .home-showcase{padding:0!important}

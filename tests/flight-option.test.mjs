@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {flightOptionIdentity,flightOptionStatus} from '../src/flight-option.js';
+import {flightOptionIdentity,flightOptionStatus,travelerFlightLabel} from '../src/flight-option.js';
+test('incoming flight numbers favor verified major carriers, not invented regional replacements',()=>{
+ assert.equal(travelerFlightLabel({ident:'RPA4633',codeshares:['AAL4633']}),'AA4633');
+ assert.equal(travelerFlightLabel({ident:'SKW1234',codeshares:['UAL5678']}),'UA5678');
+ assert.equal(travelerFlightLabel({ident:'EDV111',codeshares_iata:['DL222']}),'DL222');
+ assert.equal(travelerFlightLabel({ident:'RPA4633'}),'Flight number not confirmed');
+ assert.equal(travelerFlightLabel({ident_iata:'YX4633'}),'Flight number not confirmed');
+});
 test('regional marketing numbers require an explicit provider codeshare',()=>{
  assert.equal(flightOptionIdentity({ident:'RPA4397',ident_iata:'YX4397',operator_icao:'RPA',codeshares:['AAL4397']}).display,'AA4397');
  assert.equal(flightOptionIdentity({ident:'SKW1234',codeshares:['UAL5678']}).display,'UA5678');

@@ -24,3 +24,8 @@ export function flightOptionStatus(flight){
  if(!flight.schedule_only&&/board/i.test(status))return {tone:'airborne',label:'Boarding'};
  return {tone:'scheduled',label:flight.schedule_only||/scheduled/i.test(status)?'Scheduled · live status not checked':'Status not reported'};
 }
+export function travelerFlightLabel(flight){
+ const identity=flightOptionIdentity(flight);
+ const prefix=identity.display.match(/^([A-Z]{3}|[A-Z0-9]{2})(?=\d)/)?.[0];
+ return regionalCodes.has(prefix)?'Flight number not confirmed':identity.display||'Flight number not reported';
+}

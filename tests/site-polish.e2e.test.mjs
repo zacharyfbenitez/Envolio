@@ -14,6 +14,7 @@ test('main-site polish: compact inbound-first results, codeshares and no video',
   data.flights[0].estimated_out=new Date(Date.parse(data.flights[0].scheduled_out)+20*60000).toISOString();
   data.refreshed_at=new Date().toISOString();
   data.inbound_aircraft={ident:'RPA4633',status:'En Route',origin:data.flights[0].destination,destination:data.flights[0].origin,scheduled_in:new Date(Date.now()+3600000).toISOString(),estimated_in:new Date(Date.now()+4920000).toISOString()};
+  data.inbound_aircraft.registration='N123AB';data.inbound_aircraft.codeshares_iata=['AA4633'];
   data.diagnostics={...data.diagnostics,match_type:'codeshare'};data.route_options=[];
   res.json(data);
  });
@@ -40,12 +41,18 @@ test('main-site polish: compact inbound-first results, codeshares and no video',
   assert.equal(await page.$eval('.flight-title h1',e=>e.textContent),'AA4397');
   assert.match(await page.$eval('.carrier-identity',e=>e.textContent),/operated as YX4397/);
   assert.equal(await page.$eval('.inbound-details',e=>e.open),false);
+  assert.equal(await page.$eval('.inbound-origin',e=>e.textContent),'From Los Angeles · LAX');
+  assert.ok(await page.$eval('.inbound-origin',e=>e.getBoundingClientRect().height>0),'Origin city is visible without expanding tracking');
   assert.equal(await page.$eval('.inbound-arrival-status',e=>e.textContent),'Expected 22 min late');
   assert.equal(await page.$eval('.route-main .freshness-badge',e=>e.textContent),'Delayed 20 min');
   assert.equal(await page.$eval('.chance-details',e=>e.open),false);
   assert.ok(await page.evaluate(()=>document.querySelector('.inbound-summary').getBoundingClientRect().top<document.querySelector('.result-brief').getBoundingClientRect().top),'Incoming plane before advice and risk');
+  await page.$eval('.inbound-details>summary',e=>e.scrollIntoView({block:'center'}));
   await page.click('.inbound-details>summary');
-  assert.equal(await page.$eval('.inbound-details',e=>e.open),true);
+  await page.waitForFunction(()=>document.querySelector('.inbound-details').open);
+  assert.match(await page.$eval('.inbound-aircraft-facts',e=>e.textContent),/N123AB/);
+  assert.match(await page.$eval('.inbound-flight-list',e=>e.textContent),/AA4633/);
+  assert.doesNotMatch(await page.$eval('.inbound-flight-list',e=>e.textContent),/RPA|YX/);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   if(process.env.POLISH_SCREENSHOTS)await page.screenshot({path:`/tmp/envolio-polished-result-${width}.png`,fullPage:true});
  }
