@@ -1,11 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import express from 'express';
 import {ba1511Lookup} from './fixtures/flight-lookups.mjs';
 import {disruptionBrief} from '../traveler-intelligence.js';
 import {providerPermissions} from '../provider-permissions.js';
-const base=process.env.TEST_PUBLIC_URL || 'http://127.0.0.1:5173/';
 test('secondary provider context, conflicts, receipts, error recovery and mobile layout',async t=>{
+  const app=express(),prefix='/p/bUpWZzvZpIOeEaBV-xsmW/5173';
+  app.use((req,_res,next)=>{if(req.url.startsWith(prefix))req.url=req.url.slice(prefix.length)||'/';next();});
+  app.use('/api',(_req,res)=>res.status(503).json({error:'No live provider calls in this test'}));
+  app.use(express.static('dist'));app.use((_req,res)=>res.sendFile(process.cwd()+'/dist/index.html'));
+  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>{server.closeAllConnections();server.close();});
+  const base=`http://127.0.0.1:${server.address().port}/`;
   const browser=await puppeteer.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});t.after(()=>browser.close());
   const page=await browser.newPage(),errors=[];let fail=false;
   await page.setBypassServiceWorker(true);
@@ -27,6 +33,14 @@ test('secondary provider context, conflicts, receipts, error recovery and mobile
   await page.goto(base+'flight/BA1511?date=2026-09-12',{waitUntil:'domcontentloaded'});
   await page.waitForSelector('.source-conflicts',{timeout:15000});
   assert.match(await page.$eval('.travel-intelligence',e=>e.textContent),/Weather odds are not delay odds/);
+  assert.match(await page.$eval('.airport-outlooks',e=>e.textContent),/km\/h/);
+  assert.equal(await page.$eval('.journey-tools',e=>e.open),false);
+  for(const width of [1440,390]){
+    await page.setViewport({width,height:900});
+    await page.$eval('.travel-intelligence',e=>e.scrollIntoView({block:'start'}));
+    await page.screenshot({path:`/tmp/envolio-weather-simple-${width}.png`});
+  }
+  await page.click('.journey-tools>summary');
   await page.click('.field-evidence>summary');
   assert.match(await page.$eval('.field-grid .conflict',e=>e.textContent),/20\/100/);
   await page.click('.connection-protection>summary');

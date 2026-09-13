@@ -5,6 +5,7 @@ import {searchKey,takeSearchResult} from './flight-search.js';
 import {rememberFlight,readJourneys,SAVED_KEY,journeyUrl} from './journeys.js';
 import { travelAdvice } from './travel-advice.js';
 import TravelIntelligence from './TravelIntelligence.jsx';
+import {travelerChance} from './traveler-presentation.js';
 import {AirportExplorer} from './TripStrategy.jsx';
 import {
   ArrowRight,
@@ -1236,10 +1237,10 @@ function PlaneNow({ flight, position, current, refreshed }) {
           )
         : null,
     risk =
-      phase === "landed"
-        ? "Ready at origin"
+      flight.actual_in
+        ? "Aircraft at the gate"
         : variance > 15
-          ? "Connection at risk"
+          ? "Incoming aircraft running late"
           : variance !== null
             ? "On track"
             : "Monitoring";
@@ -1255,8 +1256,7 @@ function PlaneNow({ flight, position, current, refreshed }) {
               : `Preparing at ${code(flight.origin)}`}
         </h3>
         <p>
-          {flight.ident_iata || flight.ident} is the aircraft scheduled to
-          operate this flight.
+          Your assigned plane’s previous flight is {flight.ident_iata || flight.ident}. An aircraft swap is still possible.
         </p>
         <div
           className={`connection-risk ${variance > 15 ? "negative" : "positive"}`}
@@ -2291,15 +2291,10 @@ function DelayReasoning({ data, cached }) {
 }
 function TravelerOutlook({ data, future }) {
   const reason = data.delay_reasoning?.primary_reason;
-  const index = data.delay_index;
-  return <section className="traveler-outlook">
-    <div className="traveler-outlook-icon"><Cloud size={24}/></div>
-    <div><span className="traveler-kicker">Your travel outlook</span>
-      <h3>{future ? 'Your flight is on the calendar' : reason?.title || 'Keep an eye on airline updates'}</h3>
-      <p>{future ? 'Times may change before your trip. Gate and aircraft details appear closer to departure.' : reason ? reason.detail : 'We’ll show an explanation here when the available information supports one.'}</p>
-      {!future && reason && <span className="traveler-status">{reason.classification === 'confirmed' ? 'Reported in flight status' : reason.classification === 'likely' ? 'Likely contributor · not confirmed' : 'Possible factor · not confirmed'}</span>}
-    </div>
-    {!future && Number.isFinite(index?.score) && <div className="traveler-risk"><strong>{index.score}<small>/100</small></strong><span>experimental<br/>delay risk index</span><small>{index.signal_label || 'Limited signal'}</small></div>}
+  const chance=travelerChance(data.delay_index,future,data.cache_fallback?.active);
+  return <section className="everyday-outlook" aria-label="Your delay outlook">
+    <article className={`everyday-chance ${chance.tone}`}><span className="traveler-kicker">{chance.label}</span>{chance.percent!==null&&<strong>{chance.percent}%</strong>}<p>{chance.detail}</p>{chance.percent!==null&&<div className="chance-meter" aria-hidden="true"><i style={{width:`${chance.percent}%`}}/></div>}</article>
+    <article className={reason&&!future?'caution':'neutral'}><span className="traveler-kicker">What to watch</span><h3>{future?'Check again closer to your trip':reason?.title||'Watch your airline’s latest time'}</h3><p>{future?'Gate, weather and aircraft updates become more useful near departure.':reason?.detail||'No specific cause of delay has been verified. That does not guarantee an on-time flight.'}</p>{reason&&!future&&<small>{reason.classification==='confirmed'?'Reported cause':'Possible contributor—not a confirmed cause'}</small>}</article>
   </section>;
 }
 function NextStepCard({ flight, data, changes }) {

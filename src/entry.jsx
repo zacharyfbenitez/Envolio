@@ -20,4 +20,5 @@ import './stunning.css';
 import './traveler.css';
 import './web-launch.css';
 import './home-layout.css';
+import './results-clarity.css';
 createRoot(document.getElementById('root')).render(<AppRecovery><App/></AppRecovery>);
