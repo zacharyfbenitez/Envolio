@@ -21,6 +21,31 @@
 .everyday-outlook small{font-size:14px;line-height:1.5;color:#ffd391}
 .chance-meter{height:8px;border-radius:8px;background:#ffffff15;overflow:hidden;margin-top:18px}
 .chance-meter i{display:block;height:100%;background:#bba3ef}
+.projected-delay{grid-template-columns:minmax(0,1fr)}
+.projected-delay h3{font-size:22px;max-width:35ch}
+.projected-delay strong{font-size:52px;overflow-wrap:anywhere}
+.projected-delay .high{background:#39252d;border-color:#ac5c72}
+.projected-delay .high strong{color:#ffb1c4}
+.projected-delay .high .chance-meter i{background:#ed829e}
+.projected-delay .caution .chance-meter i{background:#ffd391}
+.chance-explainer{margin:22px 0 0;display:grid;gap:16px}
+.chance-explainer>div{display:grid;grid-template-columns:90px minmax(0,1fr);gap:16px}
+.chance-explainer dt{font-size:15px;font-weight:750;color:#fff}
+.chance-explainer dd{margin:0;font-size:16px;line-height:1.6;color:#e0dce6;max-width:75ch}
+.inbound-summary{padding:24px;margin:24px 0;border:1px solid #535160;border-radius:24px;background:#24242c}
+.inbound-summary header{display:flex;align-items:center;gap:14px}
+.inbound-summary h3{font-size:25px;line-height:1.3;margin:6px 0;color:#fff}
+.inbound-summary p{font-size:16px;line-height:1.6;color:#dedbe6;max-width:75ch}
+.inbound-summary.arrived{border-color:#3b8869;background:#202e29}
+.inbound-summary.caution{border-color:#936b42;background:#332b23}
+.inbound-route{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:20px 0}
+.inbound-route strong{font-size:23px;color:#fff}.inbound-route span{font-size:15px;color:#d4cedf}
+.inbound-summary dl{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:18px 0}
+.inbound-summary dt{font-size:14px;line-height:1.5;color:#c9c4d4}.inbound-summary dd{font-size:18px;color:#fff;margin:6px 0;line-height:1.5}
+.inbound-summary .inbound-note,.inbound-summary>small{font-size:14px;line-height:1.6;color:#cbc7d3}
+.inbound-map-link{display:flex;gap:8px;align-items:center;min-height:44px;color:#d5c3ff;font-size:16px;margin:12px 0}
+@media(max-width:600px){.inbound-summary{padding:20px}.inbound-summary dl{grid-template-columns:1fr}.inbound-summary h3{font-size:22px}}
+@media(max-width:600px){.chance-explainer>div{grid-template-columns:1fr;gap:4px}.projected-delay h3{font-size:20px}}
 .detail-shell .travel-intelligence{padding:24px;border-radius:24px;background:#202127;border:1px solid #41434e;margin:24px 0}
 .detail-shell .travel-intelligence header h3{font-size:26px;line-height:1.25}
 .detail-shell .airport-outlooks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}

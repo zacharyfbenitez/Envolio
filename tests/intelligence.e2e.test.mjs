@@ -15,6 +15,7 @@ test('secondary provider context, conflicts, receipts, error recovery and mobile
   const browser=await puppeteer.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});t.after(()=>browser.close());
   const page=await browser.newPage(),errors=[];let fail=false;
   await page.setBypassServiceWorker(true);
+  await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);
   const flight={...ba1511Lookup('2026-09-12').flights[0],gate_origin:'42'};
   const secondary={comparison:{status:'matched',receipt:{retrieved_at:'2026-09-12T12:00:00Z'}},status_data:{departure:{gate:'B123 — Satellite terminal'}},airports:[]};
   const brief=disruptionBrief(flight,secondary,{retrieved_at:'2026-09-12T12:00:00Z'},[],Date.parse('2026-09-12T12:00:00Z'));

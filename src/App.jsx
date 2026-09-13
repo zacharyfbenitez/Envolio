@@ -6,6 +6,7 @@ import {rememberFlight,readJourneys,SAVED_KEY,journeyUrl} from './journeys.js';
 import { travelAdvice } from './travel-advice.js';
 import TravelIntelligence from './TravelIntelligence.jsx';
 import {travelerChance} from './traveler-presentation.js';
+import InboundSummary from './InboundSummary.jsx';
 import {AirportExplorer} from './TripStrategy.jsx';
 import {
   ArrowRight,
@@ -1307,7 +1308,7 @@ function TurnTimeline({ flight, inbound }) {
     arrival =
       inbound &&
       (inbound.actual_in || inbound.estimated_in || inbound.scheduled_in),
-    arrived = inbound && flightPhase(inbound) === "landed",
+    arrived = !!inbound?.actual_in,
     now = Date.now(),
     start = arrival ? new Date(arrival).getTime() : now - 60 * 60e3,
     end = depart ? new Date(depart).getTime() : now + 60 * 60e3,
@@ -1328,12 +1329,12 @@ function TurnTimeline({ flight, inbound }) {
     [
       "Cleaning & turnaround",
       arrival,
-      arrived ? "In progress" : "After arrival",
+      arrived ? "Preparation time—not live-tracked" : "After gate arrival",
     ],
     [
       "Boarding",
       boarding,
-      boarding && new Date(boarding) < now ? "Under way" : "Planning time",
+      /boarding/i.test(flight.status || '') ? "Boarding reported" : "Planning estimate—check airline",
     ],
     ["Departure", depart, flight.actual_out ? "Departed" : "Scheduled"],
   ];
@@ -2290,11 +2291,13 @@ function DelayReasoning({ data, cached }) {
   </section>;
 }
 function TravelerOutlook({ data, future }) {
-  const reason = data.delay_reasoning?.primary_reason;
-  const chance=travelerChance(data.delay_index,future,data.cache_fallback?.active);
-  return <section className="everyday-outlook" aria-label="Your delay outlook">
-    <article className={`everyday-chance ${chance.tone}`}><span className="traveler-kicker">{chance.label}</span>{chance.percent!==null&&<strong>{chance.percent}%</strong>}<p>{chance.detail}</p>{chance.percent!==null&&<div className="chance-meter" aria-hidden="true"><i style={{width:`${chance.percent}%`}}/></div>}</article>
-    <article className={reason&&!future?'caution':'neutral'}><span className="traveler-kicker">What to watch</span><h3>{future?'Check again closer to your trip':reason?.title||'Watch your airline’s latest time'}</h3><p>{future?'Gate, weather and aircraft updates become more useful near departure.':reason?.detail||'No specific cause of delay has been verified. That does not guarantee an on-time flight.'}</p>{reason&&!future&&<small>{reason.classification==='confirmed'?'Reported cause':'Possible contributor—not a confirmed cause'}</small>}</article>
+  const chance=travelerChance(data.delay_index,future,data.cache_fallback?.active,data.refreshed_at);
+  return <section className="everyday-outlook projected-delay" aria-label="Your delay outlook">
+    <article className={`everyday-chance ${chance.tone}`}>
+      <h3>{chance.label}: <strong>{chance.percent!==null?`${chance.percent}%`:'Unavailable'}</strong></h3>
+      {chance.percent!==null&&<div className="chance-meter" aria-hidden="true"><i style={{width:`${chance.percent}%`}}/></div>}
+      <dl className="chance-explainer"><div><dt>Why</dt><dd>{chance.why}</dd></div><div><dt>Reliability</dt><dd>{chance.reliability}</dd></div><div><dt>Updated</dt><dd>{chance.updated?<time dateTime={chance.updated}>{new Date(chance.updated).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'})}</time>:'Update time unavailable'}</dd></div></dl>
+    </article>
   </section>;
 }
 function NextStepCard({ flight, data, changes }) {
@@ -3239,6 +3242,7 @@ function FlightDetailV2({
             </div>
           </div>
         </section>
+        {phase === 'upcoming' && !f.cancelled && !/cancel/i.test(f.status||'') && <TravelerOutlook data={state.data} future={state.data.schedule_only} />}
         {phase === "upcoming" ? (
           <>
             {!state.data.schedule_only && <section className="detail-grid phase-upcoming">
@@ -3251,11 +3255,12 @@ function FlightDetailV2({
                 />
               ))}
             </section>}
-            <PlaneNow
+            <InboundSummary
               flight={inbound}
               position={state.data.inbound_position}
               current={f}
               refreshed={state.data.refreshed_at}
+              cached={state.data.cache_fallback?.active}
             />
             {!state.data.schedule_only && <details className="traveler-details"><summary>Departure timeline</summary><TurnTimeline flight={f} inbound={inbound} /></details>}
           </>
@@ -3266,7 +3271,6 @@ function FlightDetailV2({
             refreshed={state.data.refreshed_at}
           />
         )}
-        {phase === 'upcoming' && <TravelerOutlook data={state.data} future={state.data.schedule_only} />}
         <TravelIntelligence ident={ident} date={date} origin={origin} destination={destination} departure={departure} refreshed={state.data.refreshed_at} cached={state.data.cache_fallback?.active} onRefresh={refresh} />
         <details className="traveler-details flight-analysis"><summary><span>Flight history &amp; explanation</span><small>Charts, contributing factors, and sources</small></summary>
           <button className="secondary traveler-export" onClick={() => setShareCardOpen(true)}><Download size={16}/> Download a flight card</button>
