@@ -25,6 +25,7 @@ test('trip timeline, evidence, backup preferences, saved fallback and airport ex
     return r.continue();
   });
   await p.goto(base+'flight/BA1511?date=2026-09-13',{waitUntil:'domcontentloaded'});await p.waitForSelector('.trip-timeline');
+  await p.$eval('.weather-overview',e=>e.open=true);
   assert.equal(await p.$eval('.aircraft-history',e=>e.open),false);
   assert.equal(await p.$eval('.weather-details',e=>e.open),false);
   await p.click('.horizon-picker button:last-child');

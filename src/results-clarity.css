@@ -1,12 +1,8 @@
 /* Traveler-first results: clear hierarchy, useful colors, and readable evidence. */
-.home-page .home-showcase{position:relative;isolation:isolate;overflow:hidden;border-radius:28px;padding:40px 24px 76px!important;border:1px solid #ffffff28}
-.airport-backdrop{position:absolute;inset:0;z-index:-1;background:#17191e}
-.airport-backdrop>img,.airport-backdrop>video{position:absolute;width:100%;height:100%;object-fit:cover;inset:0;filter:saturate(.45) brightness(.65)}
-.airport-backdrop-shade{position:absolute;inset:0;background:linear-gradient(180deg,#101116ba,#10111650 50%,#101116dc)}
-.airport-motion-toggle{position:absolute;bottom:16px;right:20px;border:1px solid #ffffff55;border-radius:22px;background:#191a20;color:#fff;padding:10px 16px;min-height:44px;font:inherit;font-size:14px;cursor:pointer}
+.home-page .home-showcase{padding:0!important}
 .home-showcase .showcase-heading{position:relative}.home-showcase .showcase-heading p,.home-showcase .showcase-heading>span{color:#e0e3ed}
 .home-showcase .showcase-stage{background:#15161be8}.home-showcase .showcase-route,.home-showcase .showcase-index{background:#1d1e24f5}
-@media(max-width:600px){.home-page .home-showcase{padding:24px 16px 76px!important}.home-page .showcase-heading{display:block}.home-page .showcase-heading h2{margin:12px 0}}
+@media(max-width:600px){.home-page .showcase-heading{display:block}.home-page .showcase-heading h2{margin:12px 0}}
 .home-page .home-about{border:1px solid #ffffff26;border-radius:24px;padding:20px;color:#dedee7;margin:24px 0}
 .home-about>summary{cursor:pointer;font-size:17px;font-weight:700;min-height:44px;align-content:center}
 .home-about .product-notes{margin:16px 0;padding:0;width:100%}.home-about>p{font-size:14px;line-height:1.6}
@@ -109,4 +105,10 @@
 .finder-status{display:inline-block;margin-top:8px;color:var(--status);font-size:13px;font-weight:700;line-height:1.5}.finder-match small{overflow-wrap:anywhere}
 @media(max-width:600px){.flight-finder .finder-match{grid-template-columns:minmax(0,1fr) 18px;gap:12px;padding:16px}.finder-match .finder-carrier{grid-column:1}.finder-match .finder-route{grid-column:1}.finder-match>svg{grid-column:2;grid-row:1/3}.finder-match small{font-size:13px}}
 .result-brief{display:grid;gap:16px;margin:20px 0;min-width:0}.detail-shell .result-brief>.next-step-card,.result-brief>.everyday-outlook{margin:0;min-width:0}
+.detail-shell .inbound-summary{padding:18px 22px;margin:16px 0}.inbound-summary h3{font-size:22px}.inbound-summary dl{margin:14px 0;gap:12px}.inbound-summary dd{margin:3px 0;font-size:17px}.inbound-details>summary,.chance-details>summary{font-weight:650;color:#ddcefa}
+.detail-shell .inbound-summary dl{grid-template-columns:repeat(2,minmax(0,1fr))}.inbound-summary dt,.inbound-summary dd{overflow-wrap:anywhere}.weather-overview>.travel-intelligence{margin-bottom:0}
+.detail-shell .everyday-outlook .estimate-label{font-size:14px}
+.detail-shell .everyday-outlook article,.detail-shell .next-step-card{padding:20px}.everyday-outlook .risk-at-glance{font-size:16px;line-height:1.5;margin:12px 0 6px}.everyday-outlook .estimate-label{color:#e0d9e6;font-size:13px;line-height:1.5}.chance-details{margin-top:12px}.detail-shell .projected-delay h3{font-size:19px;margin:0}.detail-shell .projected-delay strong{font-size:44px;margin:8px 0}.detail-shell .next-step-card h2{font-size:24px}.detail-shell .next-step-card p{font-size:15px;line-height:1.5}.detail-shell .chance-meter{margin-top:12px}
+@media(hover:hover) and (pointer:fine){.home-page .example-flight,.finder-match,.saved-card,.product-paths>button,.inbound-summary,.result-brief>section,.takeoff-slot{transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}.home-page .example-flight:hover,.finder-match:hover,.saved-card:hover,.product-paths>button:hover,.inbound-summary:hover,.result-brief>section:hover,.takeoff-slot:hover{transform:translateY(-3px);box-shadow:0 12px 28px #0005,0 0 0 1px #cfbaff30;border-color:#c8b3ef88}}
+@media(prefers-reduced-motion:reduce){.home-page .example-flight,.finder-match,.saved-card,.product-paths>button,.inbound-summary,.result-brief>section,.takeoff-slot{transition:none!important;transform:none!important}}
 @media(min-width:900px){.result-brief:has(.projected-delay){grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);align-items:start}.result-brief .chance-explainer>div{grid-template-columns:1fr;gap:4px}.result-brief .next-step-card{flex-direction:column}.result-brief .next-step-card h2{font-size:26px}}

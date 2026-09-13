@@ -1,5 +1,7 @@
 # Homepage airport background
 
+Retired from the homepage at the user's request on September 13, 2026. No video or poster is rendered or downloaded. Assets and provenance are retained for reference only.
+
 - Source: https://www.pexels.com/video/footage-of-airplane-in-the-airport-3723449/
 - Creator: K (Pexels)
 - Original: https://videos.pexels.com/video-files/3723449/3723449-uhd_4096_2160_24fps.mp4
