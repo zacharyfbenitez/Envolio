@@ -4,6 +4,7 @@ import FlightSearch from './FlightSearch.jsx';
 import {searchKey,takeSearchResult} from './flight-search.js';
 import {rememberFlight,readJourneys,SAVED_KEY,journeyUrl,journeySnapshot} from './journeys.js';
 import SavedFlightCard from './SavedFlightCard.jsx';
+import ScenarioShowcase from './ScenarioShowcase.jsx';
 import { travelAdvice } from './travel-advice.js';
 import TravelIntelligence from './TravelIntelligence.jsx';
 import {travelerChance,flightTimingStatus} from './traveler-presentation.js';
@@ -491,101 +492,7 @@ function ExampleFlights({ go }) {
     </section>
   );
 }
-function ProductShowcase() {
-  return (
-    <section className="home-showcase" aria-label="Envolio product preview">
-      <div className="showcase-heading">
-        <span>EXAMPLE SCREEN · NOT LIVE FLIGHT DATA</span>
-        <h2>Less guessing. A clearer next step.</h2>
-        <p>
-          Find your plane, check your times, and know what to watch before you fly.
-        </p>
-      </div>
-      <div className="showcase-stage">
-        <div className="showcase-route">
-          <div className="showcase-top">
-            <span>
-              <i /> PLANE HAS ARRIVED
-            </span>
-            <small>Example: your plane is at the airport</small>
-          </div>
-          <div className="showcase-cities">
-            <div>
-              <b>JFK</b>
-              <span>New York</span>
-            </div>
-            <div className="showcase-flightline">
-              <i />
-              <Plane size={18} />
-            </div>
-            <div>
-              <b>LHR</b>
-              <span>London</span>
-            </div>
-          </div>
-          <div className="showcase-events">
-            <span>
-              <Check size={12} /> Aircraft at gate
-            </span>
-            <span>
-              <Bell size={12} /> Watch changes
-            </span>
-            <span>
-              <Plane size={12} /> Plan your next step
-            </span>
-          </div>
-        </div>
-        <aside className="showcase-index">
-          <div className="showcase-index-head">
-            <span>POSSIBLE WAIT</span>
-            <b>
-              <TrendingDown size={14} /> EXAMPLE
-            </b>
-          </div>
-          <div className="showcase-score">
-            <strong>20</strong>
-            <span>min</span>
-            <small>Example only · check the airline’s latest time</small>
-          </div>
-          <svg
-            viewBox="0 0 300 92"
-            preserveAspectRatio="none"
-            aria-hidden="true"
-          >
-            <defs>
-              <linearGradient id="homeChart" x1="0" x2="1">
-                <stop stopColor="#6f94de" />
-                <stop offset="1" stopColor="#42dda9" />
-              </linearGradient>
-            </defs>
-            <path d="M2 70 C42 66,55 43,91 50 S145 35,180 46 S231 30,298 24" />
-            <path
-              className="showcase-fill"
-              d="M2 70 C42 66,55 43,91 50 S145 35,180 46 S231 30,298 24 L298 92 L2 92 Z"
-            />
-          </svg>
-          <div className="showcase-factors">
-            <span>
-              <i style={{ width: "31%" }} />
-              Past flights
-            </span>
-            <span>
-              <i style={{ width: "18%" }} />
-              Your plane’s previous flight
-            </span>
-            <span>
-              <i style={{ width: "22%" }} />
-              Airport + weather
-            </span>
-          </div>
-          <p>
-            <ShieldCheck size={13} /> Example only. Your own result will use available flight updates.
-          </p>
-        </aside>
-      </div>
-    </section>
-  );
-}
+function ProductShowcase() { return <ScenarioShowcase/>; }
 function ProductPaths({ go }) {
   return (
     <section className="product-paths">
