@@ -23,6 +23,13 @@ app.disable('x-powered-by');
 app.use((_req,res,next)=>{res.set({'X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Referrer-Policy':'strict-origin-when-cross-origin','Permissions-Policy':'geolocation=(), camera=(), microphone=()','Cross-Origin-Opener-Policy':'same-origin'});next()});
 const publicBase=(process.env.PUBLIC_BASE||'/p/bUpWZzvZpIOeEaBV-xsmW/5173').replace(/\/$/,'');
 app.use((req,_res,next)=>{if(req.url===publicBase||req.url.startsWith(`${publicBase}/`))req.url=req.url.slice(publicBase.length)||'/';next()});
+// Only the public, read-only widget may be framed. The full app retains DENY.
+app.get(['/embed','/embed/','/embed.html'],(_req,res)=>{
+  res.removeHeader('X-Frame-Options');
+  res.removeHeader('Cross-Origin-Opener-Policy');
+  res.set({'Cache-Control':'no-cache','Content-Security-Policy':"default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors https: http://localhost:* http://127.0.0.1:*",'X-Robots-Tag':'noindex'});
+  res.sendFile(path.join(root,'dist','embed.html'));
+});
 app.use('/api',apiGuard());
 const port = process.env.PORT || 8787;
 const root = path.dirname(fileURLToPath(import.meta.url));

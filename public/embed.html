@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>Envolio · Flight delay checker</title><link rel="icon" href="/envolio-passport.svg"><link rel="stylesheet" href="/embed.css"><script src="/embed.js" defer></script></head>
+<body><main class="widget">
+ <header><a href="https://envolio.travel" target="_blank" rel="noopener noreferrer"><img src="/envolio-passport.svg" width="24" height="24" alt="">ENVOLIO <span>↗</span></a><span class="eyebrow">Flight check</span></header>
+ <h1>A little clarity before you fly.</h1><p class="intro">Check your flight’s updates and estimated delay risk.</p>
+ <form id="search"><div class="fields"><label>Flight number<input id="flight" name="flight" placeholder="e.g. AA4397" maxlength="16" autocomplete="off" autocapitalize="characters" required></label><label>Departure date<input id="date" name="date" type="date" required></label></div><p class="hint">Use the departure airport’s local date.</p><button id="check" type="submit">Check flight <span aria-hidden="true">→</span></button></form>
+ <p id="message" role="status" aria-live="polite">Try AA4397, B61 or SQ12.</p>
+ <section id="result" aria-label="Flight result" hidden><h2 id="route"></h2><p id="status"></p><div id="risk"><p>Estimated chance of leaving 15+ minutes late</p><strong id="percent"></strong><div id="meter" role="meter" aria-label="Estimated delay likelihood" aria-valuemin="0" aria-valuemax="100"><div id="fill"></div></div></div><p id="unavailable" hidden></p><p id="why"></p><p id="reliability" class="hint"></p><p id="updated" class="hint"></p><a id="details" class="details" target="_blank" rel="noopener noreferrer">Full flight details on Envolio ↗</a></section>
+ <footer>Estimates aren’t guarantees. Follow your airline’s check-in and boarding guidance.<small>Contains AeroAPI data © FlightAware LLC 2026.</small></footer>
+ <noscript>Enable JavaScript to check a flight, or visit <a href="https://envolio.travel" target="_blank" rel="noopener noreferrer">Envolio</a>.</noscript>
+</main></body></html>
