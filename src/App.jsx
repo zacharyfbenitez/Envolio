@@ -661,26 +661,14 @@ function Home({ go, saved, remove }) {
             <span className="ai-pulse" /> FLIGHT UPDATES, MADE SIMPLE
           </div>
           <h1>
-            We know if you’re delayed
+            We know if you’re delayed{" "}
             <br />
             <em>before the airline does.</em>
           </h1>
           <p className="intro">
-            Check your flight, see what might cause a delay, and find your next step—all in one place.
+            Your flight. What’s changed. What to do next.
           </p>
           <SearchForm go={go} />
-          <p className="first-flight-help">Find your flight number on your booking email or boarding pass, for example <b>AA100</b>. Use the date at the airport where your flight starts.</p>
-          <div className="hero-proof">
-            <span>
-              <b>Check your times</b> See the latest flight update
-            </span>
-            <span>
-              <b>Understand changes</b> Get a plain-English explanation
-            </span>
-            <span>
-              <b>Make a plan</b> Know when to check with the airline
-            </span>
-          </div>
         </section>
         <ExampleFlights go={go} />
         <section className="first-trip-guide" aria-labelledby="first-trip-title"><div><span className="traveler-kicker">New here?</span><h2 id="first-trip-title">Start with one flight.</h2><p>No travel experience needed. We’ll help you understand what’s happening.</p></div><ol><li><b>1. Find your flight</b><p>Enter its number and departure date, or try an example above.</p></li><li><b>2. Check what changed</b><p>See the latest departure time, gate and any reported problems.</p></li><li><b>3. Know your next step</b><p>Get practical advice. If plans change, you can look at other flights.</p></li></ol><p className="first-trip-note">Always follow your airline’s check-in and boarding times. A delay estimate is not a reason to arrive at the airport later.</p></section>

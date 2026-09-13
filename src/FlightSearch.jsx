@@ -17,6 +17,7 @@ export default function FlightSearch({go}){
  const [recent,setRecent]=useState(()=>readJourneys(RECENT_KEY).slice(0,3));
  useEffect(()=>()=>request.current?.abort(),[]);
  useEffect(()=>{if(state.options||state.error)resultHeading.current?.focus();},[state.options,state.error]);
+ useEffect(()=>{if(state.error)setHelp(true);},[state.error]);
  const parsed=parseSearch(q,date),selectedDate=dateOverride?date:parsed.date,ident=chosen||parsed.ident;
  const inferredOrigin=parsed.identifiers.length>1?'':parsed.origin,inferredDestination=parsed.identifiers.length>1?'':parsed.destination;
  const origin=from!==null?resolveAirport(from):inferredOrigin.split(',').filter(Boolean),destination=to!==null?resolveAirport(to):inferredDestination.split(',').filter(Boolean);
@@ -34,7 +35,7 @@ export default function FlightSearch({go}){
   go(`${import.meta.env.BASE_URL}flight/${encodeURIComponent(flightIdent)}?${params}`);
  };
  const submit=async event=>{
-  event.preventDefault();setHelp(true);
+  event.preventDefault();
   if((!dateOverride&&parsed.dateError)||!validDate(selectedDate)||selectedDate>max)return setState({error:(!dateOverride&&parsed.dateError)||'Choose a valid departure date within the next year.'});
   if(!ident&&!routeMode)return setState({error:parsed.number?'Which airline is this flight with? Choose it below.':parsed.identifiers.length>1?'Your text includes more than one flight. Choose the one you want below.':'Add an airline and flight number, or search by your departure and arrival airports.'});
   if((routeMode&&(origin.length!==1||destination.length!==1))||origin.length>1||destination.length>1)return setState({error:'Choose the exact airports below so we find the right flight.'});
@@ -60,11 +61,11 @@ export default function FlightSearch({go}){
  };
  const chooseAirline=airline=>{setChosen(`${airline.code}${parsed.number.toUpperCase()}`);setState({});};
  return <section className="flight-finder natural-search" aria-label="Find your flight">
-  <div className="finder-modes" role="group" aria-label="Search method"><button type="button" aria-pressed={mode==='flight'} onClick={()=>{reset();setMode('flight');}}>Flight number or text</button><button type="button" aria-pressed={mode==='route'} onClick={()=>{reset();setMode('route');}}>I don’t know my flight number</button></div>
+  <div className="finder-modes" role="group" aria-label="Search method"><button type="button" aria-pressed={mode==='flight'} onClick={()=>{reset();setMode('flight');}}>By flight number</button><button type="button" aria-pressed={mode==='route'} onClick={()=>{reset();setMode('route');}}>By city or airport</button></div>
   <form className="search-box finder-form" onSubmit={submit} aria-busy={!!state.loading}>
-   <label className="finder-input-label" htmlFor="flight-query">{mode==='route'?'Tell us your route, or fill in the airports below':'What do you know about your flight?'}</label>
+   <label className="finder-input-label" htmlFor="flight-query">{mode==='route'?'Where are you flying?':'Find your flight'}</label>
    <div className="input-wrap"><Search size={21}/><input id="flight-query" value={q} onChange={e=>edit(e.target.value)} onPaste={e=>{const text=e.clipboardData.getData('text');if(text){e.preventDefault();const input=e.currentTarget;edit((q.slice(0,input.selectionStart)+text.replace(/\s+/g,' ')+q.slice(input.selectionEnd)).slice(0,1200));}}} placeholder={mode==='route'?'New York to London tomorrow':'e.g. United 15 tomorrow'} autoComplete="off" autoCapitalize="characters" spellCheck="false" maxLength={1200} aria-describedby="finder-guidance"/></div>
-   <p className="finder-guidance" id="finder-guidance">Use a flight number, write a sentence, or paste the flight details from your booking. Please leave out passenger and payment details.</p>
+   <p className="finder-guidance" id="finder-guidance">{mode==='route'?'Enter two cities. We’ll help you choose the airports.':'Try “AA100” or “United 15 tomorrow”.'}</p>
    {parsed.identifiers.length>1&&!chosen&&<div className="finder-followup"><b>Which flight in your itinerary?</b><div>{parsed.identifiers.map(value=><button type="button" key={value} onClick={()=>{setChosen(value);setState({});}}>{value}</button>)}</div></div>}
    {parsed.number&&!ident&&<div className="finder-followup"><label htmlFor="finder-airline">Which airline is flight {parsed.number} with?</label><input id="finder-airline" placeholder="Search airline names" value={airlineFilter} onChange={e=>setAirlineFilter(e.target.value)}/><div>{airlines.filter(a=>`${a.name} ${a.code}`.toLowerCase().includes(airlineFilter.toLowerCase())).slice(0,8).map(a=><button type="button" key={a.code} onClick={()=>chooseAirline(a)}>{a.name}</button>)}</div></div>}
    {ident&&<div className="finder-understood"><Plane size={17}/><span>Looking for <b>{ident}</b></span>{chosen&&<button type="button" onClick={()=>{setChosen('');setState({});}}>Change</button>}</div>}
@@ -72,12 +73,12 @@ export default function FlightSearch({go}){
    {(routeMode||origin.length>0||destination.length>0||help)&&<><AirportField id="finder-from" label="From" value={from??inferredOrigin} onChange={v=>{reset();setFrom(v);}}/><AirportField id="finder-to" label={routeMode?'To':'To (optional)'} value={to??inferredDestination} onChange={v=>{reset();setTo(v);}}/></>}
    </div>
    {!dateOverride&&parsed.dateError&&<div className="finder-date-warning" role="status">{parsed.dateError}{/two different|more than one date/.test(parsed.dateError)&&validDate(selectedDate)&&selectedDate<=max&&<button type="button" onClick={()=>{reset();setDate(selectedDate);setDateOverride(true);}}>Confirm {new Date(`${selectedDate}T12:00:00Z`).toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric',timeZone:'UTC'})}</button>}</div>}
-   <button className="primary finder-submit" disabled={state.loading}>{state.loading?<><LoaderCircle className="spinning" size={18}/>Finding matching flights…</>:<>Find my flight<ArrowRight size={18}/></>}</button>
+   <button className="primary finder-submit" disabled={state.loading}>{state.loading?<><LoaderCircle className="spinning" size={18}/>Checking flights…</>:<>Find my flight<ArrowRight size={18}/></>}</button>
+   {state.loading&&<p className="finder-loading-note" role="status">Checking the latest flight records. This can take a few seconds.</p>}
    {state.loading&&<button className="finder-edit" type="button" onClick={reset}>Cancel search</button>}
   </form>
-  {!q&&mode==='flight'&&<div className="finder-examples"><span>Try a search</span>{['AA100','JetBlue 1 tomorrow','SQ12 from NRT tomorrow'].map(value=><button key={value} onClick={()=>edit(value)}>{value}</button>)}</div>}
   {!q&&recent.length>0&&<div className="finder-examples"><span>Recently viewed on this device</span>{recent.map(item=><button key={item.key} onClick={()=>{edit(`${item.ident} ${airportCode(item.origin)}-${airportCode(item.destination)}`);setDate(item.date);setDateOverride(true);}}>{item.ident} · {item.date}</button>)}<button onClick={()=>{try{localStorage.removeItem(RECENT_KEY);setRecent([]);}catch{setState({error:'This browser couldn’t clear your recent searches. Please try again.'});}}}>Clear recent</button></div>}
   {(state.options||state.error)&&<section className="finder-results" aria-live="polite"><h2 ref={resultHeading} tabIndex={-1}>{state.options?.length?'Which one is yours?':'Let’s narrow it down.'}</h2>{state.error&&<p role="alert">{state.error}</p>}{state.options?.length>0&&<><p>Match the airports and departure time to your booking. Times are local to the departure airport unless marked UTC.</p>{state.options.map((flight,i)=><button className="finder-match" key={`${flight.ident||ident}-${i}`} onClick={()=>open(flight,state.payload,state.routeMode?flight.ident:ident)}><span><b>{flight.ident_iata||flight.ident||ident}</b><small>{airlines.find(a=>a.code===flight.operator)?.name||flight.operator||flight.origin?.city||'Published flight'}</small>{flight.codeshares?.length>0&&<small>Your booking may say {flight.codeshares.slice(0,3).join(' / ')}</small>}</span><span><b>{code(flight.origin)} → {code(flight.destination)}</b><small>{time(flight.scheduled_out,flight.origin?.timezone)} departure</small></span><ArrowRight size={18}/></button>)}<small className="finder-source">{state.source}{state.partial?' · More schedules may exist; these are the results returned within this search limit.':''}{state.note?` · ${state.note}`:''}</small></>}<button className="finder-edit" onClick={()=>{reset();document.querySelector('#flight-query')?.focus();}}><ArrowLeft size={16}/>Edit search</button></section>}
-  <details className="finder-help"><summary>Where can I find my flight number?</summary><p>Check your booking email or boarding pass. It usually looks like AA100 or BA1511—not the six-character booking reference. If your flight has a stop, choose the airports for the part you’re taking.</p><p>You can search up to a year ahead. Gates, aircraft and delay updates usually appear closer to departure.</p></details>
+  <details className="finder-help"><summary>Don’t know your flight number?</summary><p>Look in your booking email or boarding pass for a number like AA100. Or choose “By city or airport” above.</p><p>You can also paste your flight details here. Leave out names, booking references and payment details.</p><p>Search up to a year ahead. Gates and delay updates appear closer to departure.</p></details>
  </section>;
 }

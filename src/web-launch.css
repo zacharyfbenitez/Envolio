@@ -1,4 +1,25 @@
 /* Web-only launch corrections; imported after the legacy visual layers. */
+.home-page .hero{isolation:isolate}
+.home-page .hero-brand-art{pointer-events:none;opacity:.09;animation:none;z-index:-1}
+.home-page .hero.is-visible{animation:none;transform:none;opacity:1}
+.home-page .hero h1,.home-page .hero .intro,.home-page .hero .flight-finder{animation:none!important;opacity:1;filter:none;transform:none}
+.home-page .flight-finder{max-width:720px}
+.home-page .finder-form{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,.7fr);gap:12px 18px;box-shadow:0 16px 48px #0003;backdrop-filter:none;animation:none;transition:border-color .16s ease}
+.home-page .finder-form>*{grid-column:1/-1;min-width:0}
+.home-page .finder-form>.finder-fields{grid-column:1}
+.home-page .finder-form>.finder-submit{grid-column:2;align-self:center;margin:0}
+.home-page .finder-form:has(.finder-airport)>.finder-fields,.home-page .finder-form:has(.finder-airport)>.finder-submit{grid-column:1/-1}
+.home-page .finder-modes{gap:4px;width:fit-content;padding:4px;border-radius:16px;background:#ffffff08;border:1px solid #ffffff15}
+.home-page .finder-modes button{border:0;background:transparent;font-size:15px;transition:background .15s ease,color .15s ease}
+.home-page .finder-modes button[aria-pressed=true]{background:#e2d6ff;color:#20182b}
+.home-page .finder-help{margin-top:8px;padding:4px 0;font-size:15px}
+.home-page .finder-help summary{min-height:44px;align-content:center}
+.home-page .finder-date small{font-size:13px;color:#d4cddd}
+.finder-loading-note{font-size:14px!important;line-height:1.5!important;color:#ded6e9!important;margin:0!important}
+.home-page .finder-submit:not(:disabled):hover{filter:brightness(1.07);transform:none}
+.home-page .finder-submit:active{scale:.99}
+@media(max-width:600px){.home-page .finder-form{grid-template-columns:minmax(0,1fr)}.home-page .finder-form>.finder-submit,.home-page .finder-form>.finder-fields{grid-column:1}.home-page .finder-modes{width:100%;box-sizing:border-box}.home-page .finder-modes button{font-size:14px}.home-page .hero h1 br{display:none}}
+@media(prefers-reduced-motion:reduce){.home-page *, .home-page *::before,.home-page *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 .flight-finder{width:100%;min-width:0}
 .flight-finder .finder-form{width:100%;max-width:100%;min-width:0;box-sizing:border-box}
 .flight-finder .finder-form:focus-within{transform:none}
@@ -8,6 +29,7 @@
 .home-page .flight-finder{margin-top:22px}
 .pwa-layout:has(.finder-form:focus-within) .pwa-dock{visibility:hidden;pointer-events:none}
 html{scroll-padding-bottom:120px}
+@media(max-width:600px){.home-page .hero .eyebrow{display:none}.home-page .hero-brand-art{display:none}.home-page .hero h1{margin:14px auto;font-size:30px;line-height:1.15;letter-spacing:-.035em}.home-page .hero .intro{margin:12px auto;line-height:1.5}.home-page .hero .flight-finder{margin-top:18px}}
 .saved-page{max-width:1000px;margin:auto;padding:32px 20px 120px}
 .saved-page h1{font-size:36px;line-height:1.15}.saved-page>p{font-size:16px;color:#d5cfdf;line-height:1.6}
 .saved-page .saved-grid{margin-top:28px}.saved-page .saved-main{min-height:110px}
