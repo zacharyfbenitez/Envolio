@@ -630,7 +630,7 @@ function Home({ go, saved, remove }) {
     <>
       <Header go={go} />
       <main className="home-page">
-        <div className="home-sky" aria-hidden="true">{Array.from({length:8},(_,i)=><span key={i} className={`sky-plane sky-plane-${i}`}><Plane size={24} strokeWidth={1.5}/></span>)}</div>
+        <div className="home-sky" aria-hidden="true">{Array.from({length:8},(_,i)=><span key={i} className={`sky-plane sky-plane-${i}`}><span className="sky-aircraft"><Plane size={24} strokeWidth={1.6}/><i className="sky-contrail"/></span></span>)}</div>
         <section className="hero is-visible">
           <img
             className="hero-brand-art"
