@@ -36,7 +36,7 @@ export function scheduleCandidates(rows,{date,origin,destination,airport,normali
   const ident=f.ident_iata||f.ident;if(!ident||!f.scheduled_out)continue;
   const key=`${ident}|${f.scheduled_out}|${f.origin.code}|${f.destination.code}`;
   const codeshares=f.codeshares_iata?.length?f.codeshares_iata:f.codeshares||[];
-  if(!unique.has(key))unique.set(key,{ident,origin:f.origin,destination:f.destination,scheduled_out:f.scheduled_out,scheduled_in:f.scheduled_in,operator:f.operator_iata||f.operator_icao,source:'FlightAware published schedule',schedule_only:true,codeshares});
+  if(!unique.has(key))unique.set(key,{ident,ident_iata:f.ident_iata,operator_icao:f.operator_icao,origin:f.origin,destination:f.destination,scheduled_out:f.scheduled_out,scheduled_in:f.scheduled_in,operator:f.operator_iata||f.operator_icao,source:'FlightAware published schedule',status:'Scheduled',schedule_only:true,codeshares});
   else unique.get(key).codeshares=[...new Set([...unique.get(key).codeshares,...codeshares])];
  }
  return [...unique.values()].sort((a,b)=>a.scheduled_out.localeCompare(b.scheduled_out)).slice(0,40);

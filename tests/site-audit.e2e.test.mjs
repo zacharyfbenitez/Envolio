@@ -35,7 +35,9 @@ test('site-wide layout and traveler results states',{timeout:120000},async t=>{
  for(const width of [320,768,1440]){
   await page.setViewport({width,height:1000});
   for(const route of ['/','/dashboard','/routes/JFK-LHR','/airports/JFK/delays','/premium','/developers','/flight/SQ12','/flight/AIR1','/flight/LAND1','/flight/CANCEL1','/flight/ERROR1']){
-   await page.goto(base+route,{waitUntil:'networkidle0'});
+   await page.goto(base+route,{waitUntil:'domcontentloaded'});
+   await page.waitForSelector(route.includes('ERROR1')?'.error-panel':route.startsWith('/flight/')?'.detail-shell':'main');
+   await page.evaluate(async()=>{await document.fonts.ready;await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));});
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`Page overflow: ${route} at ${width}`);
    if(route==='/flight/SQ12'){
     await page.waitForSelector('.projected-delay');
@@ -44,6 +46,10 @@ test('site-wide layout and traveler results states',{timeout:120000},async t=>{
     assert.match(await page.$eval('.operational-warnings',e=>e.textContent),/Earlier weather/);
     assert.deepEqual(await page.$$eval('.chance-explainer dt',es=>es.map(e=>e.textContent)),['Why','Reliability','Updated']);
     assert.match(await page.$eval('.inbound-summary',e=>e.textContent),/20 minutes after/);
+    assert.ok(await page.evaluate(()=>document.querySelector('.flight-title').getBoundingClientRect().top<document.querySelector('.next-step-card').getBoundingClientRect().top),'Flight identity precedes advice');
+    assert.ok(await page.evaluate(()=>document.querySelector('.projected-delay').getBoundingClientRect().top<document.querySelector('.operational-warnings').getBoundingClientRect().top),'Estimate precedes supporting warnings');
+    assert.equal(await page.$eval('.flight-analysis',e=>e.open),false);
+    await page.$eval('.flight-analysis',e=>e.open=true);
     assert.equal(await page.$('.inbound-summary .mini-map'),null);
     await page.$$eval('.risk-context details',es=>es.forEach(e=>e.open=true));
     assert.match(await page.$eval('.risk-audit',e=>e.textContent),/Live aircraft/);

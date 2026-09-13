@@ -9,6 +9,8 @@ import {travelerChance} from './traveler-presentation.js';
 import InboundSummary from './InboundSummary.jsx';
 import RiskContext from './RiskContext.jsx';
 import TakeoffSlot from './TakeoffSlot.jsx';
+import AirportBackdrop from './AirportBackdrop.jsx';
+import CarrierLogo from './CarrierLogo.jsx';
 import {AirportExplorer} from './TripStrategy.jsx';
 import {
   ArrowRight,
@@ -191,7 +193,8 @@ function countryForAirport(airport) {
 }
 function CountryMarker({ airport }) {
   const country = countryForAirport(airport);
-  if (!country) return null;
+  const [failed, setFailed] = useState(null);
+  if (!country || failed === country.iso) return null;
   return (
     <span
       className="airport-country"
@@ -202,6 +205,7 @@ function CountryMarker({ airport }) {
         src={`https://flagcdn.com/${country.iso.toLowerCase()}.svg`}
         alt=""
         loading="lazy"
+        onError={() => setFailed(country.iso)}
       />
     </span>
   );
@@ -407,32 +411,6 @@ function Footer({ go }) {
     </footer>
   );
 }
-function CarrierLogo({ flight }) {
-  const iata = (
-      flight.operator_iata ||
-      flight.ident_iata?.toUpperCase().match(/^[A-Z0-9]{2}/)?.[0] ||
-      ""
-    ).toUpperCase(),
-    name = flight.operator || iata;
-  const [src, setSrc] = useState("play"),
-    url =
-      src === "play"
-        ? `${base}api/airline-icon?name=${encodeURIComponent(name)}`
-        : `https://images.kiwi.com/airlines/64/${iata}.png`;
-  return (
-    <div className="carrier-logo">
-      {iata && src !== "text" ? (
-        <img
-          src={url}
-          alt={`${name} app icon`}
-          onError={() => setSrc(src === "play" ? "airline" : "text")}
-        />
-      ) : (
-        <span>{iata || <Plane size={20} />}</span>
-      )}
-    </div>
-  );
-}
 function SearchForm({go}) { return <FlightSearch go={go}/>; }
 function ExampleFlights({ go }) {
   const tomorrow = localISO(new Date(Date.now() + 86400000)),
@@ -515,6 +493,7 @@ function ExampleFlights({ go }) {
 function ProductShowcase() {
   return (
     <section className="home-showcase" aria-label="Envolio product preview">
+      <AirportBackdrop />
       <div className="showcase-heading">
         <span>EXAMPLE SCREEN · NOT LIVE FLIGHT DATA</span>
         <h2>Less guessing. A clearer next step.</h2>
@@ -538,7 +517,6 @@ function ProductShowcase() {
             <div className="showcase-flightline">
               <i />
               <Plane size={18} />
-              <small>AA100 · plane has arrived</small>
             </div>
             <div>
               <b>LHR</b>
@@ -636,7 +614,7 @@ function ProductPaths({ go }) {
         <ArrowRight />
       </button>
       <div className="seo-links">
-        <span>Popular intelligence pages</span>
+        <span>Explore routes and airports</span>
         <button onClick={() => go(`${base}routes/JFK-LHR`)}>JFK → LHR</button>
         <button onClick={() => go(`${base}routes/SFO-HND`)}>SFO → HND</button>
         <button onClick={() => go(`${base}airports/JFK/delays`)}>
@@ -676,7 +654,6 @@ function Home({ go, saved, remove }) {
           <SearchForm go={go} />
         </section>
         <ExampleFlights go={go} />
-        <section className="first-trip-guide" aria-labelledby="first-trip-title"><div><span className="traveler-kicker">New here?</span><h2 id="first-trip-title">Start with one flight.</h2><p>No travel experience needed. We’ll help you understand what’s happening.</p></div><ol><li><b>1. Find your flight</b><p>Enter its number and departure date, or try an example above.</p></li><li><b>2. Check what changed</b><p>See the latest departure time, gate and any reported problems.</p></li><li><b>3. Know your next step</b><p>Get practical advice. If plans change, you can look at other flights.</p></li></ol><p className="first-trip-note">Always follow your airline’s check-in and boarding times. A delay estimate is not a reason to arrive at the airport later.</p></section>
         <ProductShowcase />
         <AirportExplorer />
         <section className="saved-section">
@@ -732,7 +709,7 @@ function Home({ go, saved, remove }) {
           )}
         </section>
         <ProductPaths go={go} />
-        <section className="product-notes">
+        <details className="home-about"><summary>How Envolio helps you travel</summary><section className="product-notes">
           <div>
             <Database />
             <b>Your flight, in one place</b>
@@ -754,7 +731,7 @@ function Home({ go, saved, remove }) {
               See where an update came from. If information is missing or sources disagree, we’ll say so.
             </p>
           </div>
-        </section>
+        </section><p>Always follow your airline’s check-in and boarding times. A delay estimate is not a reason to arrive at the airport later.</p></details>
       </main>
       <Footer go={go} />
     </>
@@ -764,10 +741,10 @@ function ExplorePage({ route, go, saved, remove }) {
   const isRoute = route.page === "route-landing",
     title = isRoute
       ? `${route.origin} to ${route.destination} flight tracker`
-      : `${route.airport} airport delay forecast`,
+      : `Flying from ${route.airport}?`,
     subtitle = isRoute
-      ? "Search a specific flight to see live status, inbound aircraft, weather, and historically validated disruption risk."
-      : "Check a departing flight for live airport conditions, delay programs, weather, and its route-specific Delay Index.";
+      ? "Find your flight for the latest times, incoming plane, weather and route history. Delay estimates are experimental."
+      : "Find your departing flight to see weather and reported airport problems that may affect your trip.";
   if (route.page === "dashboard")
     return (
       <>
@@ -2297,9 +2274,9 @@ function TravelerOutlook({ data, future }) {
   const chance=travelerChance(data.delay_index,future,data.cache_fallback?.active,data.refreshed_at);
   return <section className="everyday-outlook projected-delay" aria-label="Your delay outlook">
     <article className={`everyday-chance ${chance.tone}`}>
-      <h3>{chance.label}: <strong>{chance.percent!==null?`${chance.percent}%`:'Unavailable'}</strong></h3>
+      <h3>{chance.label}: <strong className={chance.percent===null?'chance-unavailable':undefined}>{chance.percent!==null?`${chance.percent}%`:'Unavailable'}</strong></h3>
       {chance.percent!==null&&<div className="chance-meter" aria-hidden="true"><i style={{width:`${chance.percent}%`}}/></div>}
-      <dl className="chance-explainer"><div><dt>Why</dt><dd>{chance.why}</dd></div><div><dt>Reliability</dt><dd>{chance.reliability}</dd></div><div><dt>Updated</dt><dd>{chance.updated?<time dateTime={chance.updated}>{new Date(chance.updated).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'})}</time>:'Update time unavailable'}</dd></div></dl>
+      <dl className="chance-explainer"><div><dt>Why</dt><dd>{chance.why}</dd></div><div><dt>Reliability</dt><dd>{chance.reliability}</dd></div><div><dt>Updated</dt><dd>{chance.updated?<time dateTime={chance.updated}>{new Date(chance.updated).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:data.flights?.[0]?.origin?.timezone||'UTC',timeZoneName:'short'})}</time>:'Update time unavailable'}</dd></div></dl>
     </article>
   </section>;
 }
@@ -3088,7 +3065,7 @@ function FlightDetailV2({
           >
             <RefreshCw size={14} className={refreshing ? "spinning" : ""} />{" "}
             {refreshing ? "Refreshing" : "Refresh"}
-            <small>Updated {clock(state.data.refreshed_at)}</small>
+            <small>Updated {clock(state.data.refreshed_at, f.origin?.timezone)} · {code(f.origin)} time</small>
           </button>
         </div>
         {state.error && (
@@ -3106,8 +3083,6 @@ function FlightDetailV2({
             <button onClick={refresh}>Try live refresh</button>
           </div>
         )}
-        <NextStepCard flight={f} data={state.data} changes={changes} />
-        {!!state.data.delay_index?.operational_warnings?.length && <section className="operational-warnings" aria-label="Weather and aircraft warnings">{state.data.delay_index.operational_warnings.map((warning,i)=><article key={`${warning.kind}-${i}`}><h3>{warning.airport?`${warning.airport}: `:''}{warning.title}</h3><p>{warning.detail}</p><small>{warning.source}{warning.issued_at?` · Forecast issued ${new Date(warning.issued_at).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'})}`:''}</small>{warning.periods?.length>0&&<details><summary>When this weather is forecast</summary>{warning.periods.map((period,n)=><p key={n}>{new Date(period.from).toLocaleString()} – {new Date(period.to).toLocaleString()}{period.weather_probability!==null?` · ${period.weather_probability}% chance of the weather, not of a flight delay`:''}</p>)}<small>Times use your device’s time zone.</small></details>}</article>)}</section>}
         {state.data.schedule_only && (
           <div className="future-schedule-notice">
             <CalendarDays size={18} />
@@ -3122,12 +3097,12 @@ function FlightDetailV2({
             <CarrierLogo flight={f} />
             <div>
               <span>
-                {f.operator || "Carrier not reported"}
+                {f.operator || "Operating airline"}
                 {state.data.diagnostics?.match_type === "codeshare"
-                  ? ` · marketed as ${ident}`
+                  ? ` · operated as ${f.ident_iata || f.ident}`
                   : ""}
               </span>
-              <h1>{f.ident_iata || f.ident}</h1>
+              <h1>{state.data.diagnostics?.match_type === "codeshare" ? ident : f.ident_iata || f.ident}</h1>
             </div>
           </div>
           <div className="title-actions">
@@ -3246,9 +3221,12 @@ function FlightDetailV2({
             </div>
           </div>
         </section>
+        <div className="result-brief">
+          <NextStepCard flight={f} data={state.data} changes={changes} />
+          {phase === 'upcoming' && !f.cancelled && !/cancel/i.test(f.status||'') && <TravelerOutlook data={state.data} future={state.data.schedule_only} />}
+        </div>
         {!f.actual_off && !f.actual_in && !f.cancelled && <TakeoffSlot slot={state.data.takeoff_slot} airport={f.origin} scheduled={f.scheduled_out} cached={state.data.cache_fallback?.active}/>}
-        {phase === 'upcoming' && !f.cancelled && !/cancel/i.test(f.status||'') && <TravelerOutlook data={state.data} future={state.data.schedule_only} />}
-        {phase === 'upcoming' && <RiskContext index={state.data.delay_index} cached={state.data.cache_fallback?.active}/>}
+        {phase === 'upcoming' && !!state.data.delay_index?.operational_warnings?.length && <section className="operational-warnings" aria-label="Weather and aircraft warnings"><h2>What to watch</h2><p>These signals can affect your flight. They are not all confirmed causes of a delay.</p>{state.data.delay_index.operational_warnings.map((warning,i)=><details key={`${warning.kind}-${i}`}><summary>{warning.airport?`${warning.airport}: `:''}{warning.title}</summary><p>{warning.detail}</p><small>{warning.source}{warning.issued_at?` · Forecast issued ${new Date(warning.issued_at).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'})}`:''}</small>{warning.periods?.length>0&&<div><p>Forecast periods · your device’s time zone</p>{warning.periods.map((period,n)=><p key={n}>{new Date(period.from).toLocaleString()} – {new Date(period.to).toLocaleString()}{period.weather_probability!=null?` · ${period.weather_probability}% chance of the weather, not of a flight delay`:''}</p>)}</div>}</details>)}</section>}
         {phase === "upcoming" ? (
           <>
             {!state.data.schedule_only && <section className="detail-grid phase-upcoming">
@@ -3280,6 +3258,7 @@ function FlightDetailV2({
         )}
         <TravelIntelligence ident={ident} date={date} origin={origin} destination={destination} departure={departure} refreshed={state.data.refreshed_at} cached={state.data.cache_fallback?.active} onRefresh={refresh} />
         <details className="traveler-details flight-analysis"><summary><span>Flight history &amp; explanation</span><small>Charts, contributing factors, and sources</small></summary>
+          {phase === 'upcoming' && <RiskContext index={state.data.delay_index} cached={state.data.cache_fallback?.active}/>}
           <button className="secondary traveler-export" onClick={() => setShareCardOpen(true)}><Download size={16}/> Download a flight card</button>
           <DelayReasoning data={state.data.delay_reasoning} cached={state.data.cache_fallback?.active} />
           <ProbabilityIndex index={state.data.delay_index} phase={phase} />
@@ -3323,7 +3302,7 @@ function FlightDetailV2({
         open={alertsOpen}
         onClose={() => setAlertsOpen(false)}
         flightKey={`${ident}.${date}`}
-        flightLabel={f.ident_iata || f.ident}
+        flightLabel={state.data.diagnostics?.match_type === "codeshare" ? ident : f.ident_iata || f.ident}
       />
       {shareCardOpen && (
         <ShareResultCard

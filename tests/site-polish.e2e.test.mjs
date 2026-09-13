@@ -1,0 +1,61 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import express from 'express';
+import puppeteer from 'puppeteer-core';
+import {sq12Lookup} from './fixtures/flight-lookups.mjs';
+
+test('main-site polish: codeshares, readable layout, local video and motion controls', {timeout:180000}, async t => {
+ const app=express();
+ const prefix='/p/bUpWZzvZpIOeEaBV-xsmW/5173';
+ app.use((req,_res,next)=>{if(req.url.startsWith(prefix))req.url=req.url.slice(prefix.length)||'/';next();});
+ app.get('/api/flights/:ident',(_req,res)=>{
+  const data=sq12Lookup('2026-09-15');
+  data.flights[0].ident_iata='YX4397';data.flights[0].operator='Republic Airways';
+  data.diagnostics={...data.diagnostics,match_type:'codeshare'};data.route_options=[];
+  res.json(data);
+ });
+ app.use('/api',(_req,res)=>res.status(503).json({error:'Fixture provider unavailable'}));
+ app.use(express.static('dist'));app.use((_req,res)=>res.sendFile(process.cwd()+'/dist/index.html'));
+ const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
+ t.after(()=>{server.closeAllConnections();server.close();});
+ const browser=await puppeteer.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox','--renderer-process-limit=2']});t.after(()=>browser.close());
+ const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.setRequestInterception(true);page.on('request',r=>new URL(r.url()).hostname==='127.0.0.1'?r.continue():r.abort());
+ const base=`http://127.0.0.1:${server.address().port}`;
+ for(const width of [320,390,1440]){
+  console.info(`[polish] Layout at ${width}px`);
+  await page.setViewport({width,height:1000});
+  await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);
+  await page.goto(base,{waitUntil:'domcontentloaded'});await page.waitForSelector('.home-showcase');
+  await page.$eval('.home-showcase',e=>e.scrollIntoView());
+  assert.equal(await page.$('.airport-backdrop video'),null,'Reduced motion never loads video');
+  assert.ok(await page.$eval('.airport-backdrop img',e=>e.getAttribute('src').endsWith('airport-background.jpg')));
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  assert.ok(await page.$$eval('.seo-links button',es=>es.every(e=>parseFloat(getComputedStyle(e).fontSize)>=14)));
+  if(process.env.POLISH_SCREENSHOTS)await page.screenshot({path:`/tmp/envolio-polished-home-${width}.png`,fullPage:true});
+  await page.goto(base+'/flight/AA4397?date=2026-09-15',{waitUntil:'domcontentloaded'});await page.waitForSelector('.flight-title h1').catch(error=>{throw new Error(`${error.message}; browser errors: ${errors.join('; ')}`);});
+  assert.equal(await page.$eval('.flight-title h1',e=>e.textContent),'AA4397');
+  assert.match(await page.$eval('.carrier-identity',e=>e.textContent),/operated as YX4397/);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  if(process.env.POLISH_SCREENSHOTS)await page.screenshot({path:`/tmp/envolio-polished-result-${width}.png`,fullPage:true});
+ }
+ await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'no-preference'}]);
+ console.info('[polish] Video playback and pause controls');
+ await page.goto(base,{waitUntil:'domcontentloaded'});await page.waitForSelector('.home-showcase');await page.$eval('.home-showcase',e=>e.scrollIntoView());
+ await page.waitForSelector('.airport-backdrop video');
+ await page.waitForFunction(()=>document.querySelector('.airport-backdrop video')?.readyState>=2);
+ assert.ok(await page.$eval('.airport-backdrop video',e=>e.muted&&e.playsInline&&e.videoWidth>0));
+ await page.waitForFunction(()=>!document.querySelector('.airport-backdrop video').paused);
+ await page.click('.airport-motion-toggle');
+ await page.waitForFunction(()=>document.querySelector('.airport-backdrop video').paused);
+ assert.equal(await page.$eval('.airport-motion-toggle',e=>e.getAttribute('aria-pressed')),'true');
+ await page.click('.airport-motion-toggle');
+ await page.waitForFunction(()=>!document.querySelector('.airport-backdrop video').paused);
+ await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);
+ await page.waitForFunction(()=>!document.querySelector('.airport-backdrop video'));
+ const saved=await browser.newPage();await saved.evaluateOnNewDocument(()=>Object.defineProperty(navigator,'connection',{value:{saveData:true}}));
+ console.info('[polish] Data-saving fallback');
+ await saved.goto(base,{waitUntil:'domcontentloaded'});await saved.waitForSelector('.home-showcase');await saved.$eval('.home-showcase',e=>e.scrollIntoView());
+ assert.equal(await saved.$('.airport-backdrop video'),null,'Data saving never loads video');
+ assert.deepEqual(errors,[]);
+});

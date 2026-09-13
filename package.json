@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "test:polish": "node --test --test-concurrency=1 tests/flight-option.test.mjs tests/site-polish.e2e.test.mjs",
     "test:slots": "node --test tests/takeoff-slots.test.mjs tests/faa-edct.test.mjs tests/slot-risk.test.mjs",
     "test:embed": "node --test tests/embed.e2e.test.mjs",
     "dev": "concurrently \"vite --host 0.0.0.0\" \"node server.js\"",

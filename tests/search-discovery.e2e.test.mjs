@@ -36,6 +36,8 @@ test('guided search clarifies airline/airports, offers real returned legs and ke
  await page.$eval('#finder-date',el=>{const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;setter.call(el,'2027-03-05');el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));});
  await page.$eval('.finder-form',f=>f.requestSubmit());await page.waitForSelector('.finder-match');assert.match(routeQuery,/origin=JFK/);assert.match(routeQuery,/destination=LHR/);assert.match(routeQuery,/date=2027-03-05/);
  assert.equal((await page.$$('.finder-match')).length,2);assert.match(await page.$eval('.finder-results',e=>e.textContent),/FlightAware published schedules/);
+ assert.equal((await page.$$('.finder-match .carrier-logo')).length,2,'Every route option has an airline identity');
+ assert.equal((await page.$$('.finder-match.status-scheduled')).length,2,'Schedule-only discovery is not falsely green');
  for(const width of [1440,390,320]){
   await page.setViewport({width,height:1000});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,`page fits ${width}`);

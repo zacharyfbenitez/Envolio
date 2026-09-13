@@ -1,4 +1,19 @@
 /* Traveler-first results: clear hierarchy, useful colors, and readable evidence. */
+.home-page .home-showcase{position:relative;isolation:isolate;overflow:hidden;border-radius:28px;padding:40px 24px 76px!important;border:1px solid #ffffff28}
+.airport-backdrop{position:absolute;inset:0;z-index:-1;background:#17191e}
+.airport-backdrop>img,.airport-backdrop>video{position:absolute;width:100%;height:100%;object-fit:cover;inset:0;filter:saturate(.45) brightness(.65)}
+.airport-backdrop-shade{position:absolute;inset:0;background:linear-gradient(180deg,#101116ba,#10111650 50%,#101116dc)}
+.airport-motion-toggle{position:absolute;bottom:16px;right:20px;border:1px solid #ffffff55;border-radius:22px;background:#191a20;color:#fff;padding:10px 16px;min-height:44px;font:inherit;font-size:14px;cursor:pointer}
+.home-showcase .showcase-heading{position:relative}.home-showcase .showcase-heading p,.home-showcase .showcase-heading>span{color:#e0e3ed}
+.home-showcase .showcase-stage{background:#15161be8}.home-showcase .showcase-route,.home-showcase .showcase-index{background:#1d1e24f5}
+@media(max-width:600px){.home-page .home-showcase{padding:24px 16px 76px!important}.home-page .showcase-heading{display:block}.home-page .showcase-heading h2{margin:12px 0}}
+.home-page .home-about{border:1px solid #ffffff26;border-radius:24px;padding:20px;color:#dedee7;margin:24px 0}
+.home-about>summary{cursor:pointer;font-size:17px;font-weight:700;min-height:44px;align-content:center}
+.home-about .product-notes{margin:16px 0;padding:0;width:100%}.home-about>p{font-size:14px;line-height:1.6}
+.home-page .seo-links{flex-wrap:wrap;gap:10px}.home-page .seo-links button{font-size:14px;min-height:44px;padding:10px 14px;color:#e5e5ed}
+.home-page .showcase-flightline small,.home-page .showcase-index>p,.home-page .showcase-top small{font-size:13px;line-height:1.5;color:#d4d5e0}
+.home-page .showcase-flightline small{font-size:13px!important}
+.home-page .product-paths span b{font-size:13px;line-height:1.6;color:#d0d2df}.home-page .product-paths span em{font-size:11px}.home-page .seo-links>span{font-size:14px}
 .detail-shell{width:min(1080px,calc(100% - 40px));max-width:1080px;margin:0 auto;padding:24px 0 80px;box-sizing:border-box}
 .detail-shell>section,.detail-shell>details{min-width:0;max-width:100%;box-sizing:border-box}
 .detail-shell .scroll-reveal,.detail-shell .scroll-reveal.scroll-shown{opacity:1!important;transform:none!important;filter:none!important;animation:none!important}
@@ -81,3 +96,17 @@
 .aircraft-chain{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;list-style:none;padding:0;margin:20px 0}.aircraft-chain li{display:flex;flex-direction:column;gap:8px;min-width:0;border:1px solid #ffffff26;border-top:3px solid #91a7cc;padding:16px;border-radius:16px;overflow-wrap:anywhere}.aircraft-chain li.arrived{border-top-color:#7cddb0}.aircraft-chain li.disrupted{border-top-color:#ff8c8c}.aircraft-chain .your-flight{background:#91baff12}.aircraft-chain strong{font-size:18px}
 @media(max-width:600px){.airport-signal-grid,.risk-audit-grid{grid-template-columns:1fr}.risk-context>details,.risk-signal-note{padding:16px}.aircraft-chain{grid-template-columns:1fr}.aircraft-chain li{border-top-width:1px;border-left:3px solid #91a7cc}}
 .takeoff-slot{padding:20px;margin:16px 0;border-radius:20px;border:1px solid #ffffff26;background:#ffffff06;min-width:0;overflow-wrap:anywhere}.takeoff-slot summary{cursor:pointer;font-size:17px;font-weight:700}.takeoff-slot h3{font-size:22px;line-height:1.4;margin:10px 0}.takeoff-slot p{font-size:16px;line-height:1.55;color:#d1cbdd}.takeoff-slot small{font-size:14px;color:#c0b9ce}.takeoff-slot.assigned{border-color:#c5b0ff70;background:#c5b0ff0c}
+.detail-shell .flight-title{margin:16px 0}.detail-shell .carrier-identity>div>span{font-size:14px;color:#d4d5df;line-height:1.5}
+.detail-shell .timeline-steps small,.detail-shell .timeline-title small,.detail-shell .validation-panel small,.detail-shell .refresh-flight small{font-size:13px;line-height:1.5;color:#d0d2df}
+.operational-warnings{gap:0;border:1px solid #8c713f;border-radius:22px;background:#30291e;padding:20px}
+.operational-warnings h2{font-size:20px;margin:0;color:#ffe0a9}.operational-warnings>p{margin:8px 0 14px}
+.operational-warnings>details{border-top:1px solid #ffffff20;padding:8px 0}.operational-warnings summary{font-weight:650;color:#ffe0a9;overflow-wrap:anywhere}
+.detail-shell .flight-analysis>.risk-context{margin-top:16px}
+.projected-delay .chance-unavailable{font-size:clamp(30px,6vw,40px);color:#d2cedc}
+.flight-finder .finder-match{--status:#a8b7d4;border-color:color-mix(in srgb,var(--status) 45%,transparent);border-left:4px solid var(--status);background:color-mix(in srgb,var(--status) 8%,#1b1d23);grid-template-columns:minmax(0,1fr) minmax(0,1fr) 18px}
+.finder-match.status-delayed{--status:#ffd080}.finder-match.status-cancelled{--status:#ff9caa}.finder-match.status-on-time,.finder-match.status-arrived{--status:#91e9b9}.finder-match.status-airborne{--status:#9bcaff}
+.finder-carrier{display:flex;gap:12px;align-items:center;min-width:0}.finder-carrier>span{min-width:0}.finder-carrier .carrier-logo{width:42px;height:42px;flex:0 0 42px;border-radius:12px}.finder-carrier .carrier-logo img{width:100%;height:100%;object-fit:cover}
+.finder-status{display:inline-block;margin-top:8px;color:var(--status);font-size:13px;font-weight:700;line-height:1.5}.finder-match small{overflow-wrap:anywhere}
+@media(max-width:600px){.flight-finder .finder-match{grid-template-columns:minmax(0,1fr) 18px;gap:12px;padding:16px}.finder-match .finder-carrier{grid-column:1}.finder-match .finder-route{grid-column:1}.finder-match>svg{grid-column:2;grid-row:1/3}.finder-match small{font-size:13px}}
+.result-brief{display:grid;gap:16px;margin:20px 0;min-width:0}.detail-shell .result-brief>.next-step-card,.result-brief>.everyday-outlook{margin:0;min-width:0}
+@media(min-width:900px){.result-brief:has(.projected-delay){grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);align-items:start}.result-brief .chance-explainer>div{grid-template-columns:1fr;gap:4px}.result-brief .next-step-card{flex-direction:column}.result-brief .next-step-card h2{font-size:26px}}

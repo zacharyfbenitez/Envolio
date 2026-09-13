@@ -49,6 +49,6 @@ test('trip timeline, evidence, backup preferences, saved fallback and airport ex
   await p.goto(base,{waitUntil:'domcontentloaded'});await p.waitForSelector('.airport-explorer input');await p.type('.airport-explorer input','JFK');await p.click('.airport-explorer form button');await p.waitForSelector('.airport-explorer .airport-pressure');
   assert.match(await p.$eval('.airport-explorer',e=>e.textContent),/Unknown/);
   assert.match(await p.$eval('.first-flight-help',e=>e.textContent),/booking email/);
-  for(const width of [1440,390,320]){await p.setViewport({width,height:1000});await p.evaluate(()=>scrollTo({top:0,behavior:'instant'}));assert.equal(await p.$eval('.first-trip-guide',e=>e.scrollWidth>e.clientWidth+1),false);await p.screenshot({path:`/tmp/disruption-simple-home-${width}.png`});}
+  for(const width of [1440,390,320]){await p.setViewport({width,height:1000});await p.evaluate(()=>scrollTo({top:0,behavior:'instant'}));assert.equal(await p.$eval('.home-about',e=>e.scrollWidth>e.clientWidth+1),false);await p.screenshot({path:`/tmp/disruption-simple-home-${width}.png`});}
   assert.deepEqual(errors,[]);
 });
