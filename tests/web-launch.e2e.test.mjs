@@ -16,6 +16,14 @@ test('web launch: contained search, saved flights, recovery and keyboard alerts'
  for(const width of [320,390,1440]){
   await page.setViewport({width,height:900});await page.goto(base);await page.waitForSelector('#flight-query');
   assert.ok(await page.$eval('.finder-form',e=>{const a=e.getBoundingClientRect(),b=e.parentElement.getBoundingClientRect();return a.left>=b.left-1&&a.right<=b.right+1;}),`finder containment ${width}`);
+  assert.ok(await page.$eval('.home-page',home=>{
+   const bounds=home.getBoundingClientRect();let previous=null;
+   return [...home.children].filter(e=>e.tagName==='SECTION').every(section=>{
+    const box=section.getBoundingClientRect(),ok=Math.abs(box.left-bounds.left)<2&&Math.abs(box.right-bounds.right)<2&&(!previous||box.top>=previous.bottom+20);
+    previous=box;return ok;
+   });
+  }),`homepage sections align and do not overlap at ${width}`);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`homepage fits ${width}`);
   await page.focus('#flight-query');assert.equal(await page.$eval('.pwa-dock',e=>getComputedStyle(e).visibility),'hidden');
  }
  await page.evaluate(()=>localStorage.setItem('contrail.saved',JSON.stringify([{ident:'SQ12',date:'2026-09-14',key:'SQ12|2026-09-14',origin:{code_iata:'NRT'},destination:{code_iata:'LAX'}}])));
