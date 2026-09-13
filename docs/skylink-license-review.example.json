@@ -1,0 +1,13 @@
+{
+  "provider": "Skylink",
+  "agreement_reference": "",
+  "reviewed_at": "",
+  "expires_at": "",
+  "historical_storage": false,
+  "model_training": false,
+  "actual_gate_timestamps_verified": false,
+  "webhook_use": false,
+  "max_active_subscriptions": 0,
+  "callback_authentication_verified": false,
+  "worker_capacity_enforced": false
+}
