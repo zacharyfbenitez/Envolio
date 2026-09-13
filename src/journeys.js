@@ -16,6 +16,14 @@ export function journeyUrl(item,base){
 export function addRecent(items,item){return [item,...validJourneys(items).filter(old=>old.key!==item.key)].slice(0,8);}
 export function readJourneys(key){try{return validJourneys(JSON.parse(localStorage.getItem(key)||'[]'));}catch{return [];}}
 export function rememberFlight(ident,date,flight){
- const item={ident,date,key:`${ident}|${date}|${airportCode(flight.origin)}|${airportCode(flight.destination)}`,origin:flight.origin,destination:flight.destination,operator:flight.operator,viewed_at:new Date().toISOString()};
+ const item={ident,date,key:`${ident}|${date}|${airportCode(flight.origin)}|${airportCode(flight.destination)}`,origin:flight.origin,destination:flight.destination,operator:flight.operator,viewed_at:new Date().toISOString(),snapshot:journeySnapshot(flight)};
  try{localStorage.setItem(RECENT_KEY,JSON.stringify(addRecent(readJourneys(RECENT_KEY),item)));}catch{/* Viewing a flight must still work without storage. */}
+ try{
+  const saved=readJourneys(SAVED_KEY),matches=old=>old.ident===ident&&old.date===date&&airportCode(old.origin)===airportCode(flight.origin)&&airportCode(old.destination)===airportCode(flight.destination);
+  if(saved.some(matches)){localStorage.setItem(SAVED_KEY,JSON.stringify(saved.map(old=>matches(old)?{...old,origin:flight.origin,destination:flight.destination,operator:flight.operator,snapshot:item.snapshot}:old)));window.dispatchEvent(new Event('envolio:journeys-updated'));}
+ }catch{/* Saving extra details must not block the lookup. */}
+}
+export function journeySnapshot(flight,checkedAt){
+ const fields=['scheduled_out','estimated_out','actual_out','scheduled_in','estimated_in','actual_in','actual_off','status','cancelled','diverted','schedule_only','gate_origin','terminal_origin'];
+ return {...Object.fromEntries(fields.map(key=>[key,flight[key]])),checked_at:checkedAt||new Date().toISOString()};
 }

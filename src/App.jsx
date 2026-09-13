@@ -2,7 +2,8 @@ import React, { useEffect, useState, useRef } from "react";
 import WebShell from './WebShell.jsx';
 import FlightSearch from './FlightSearch.jsx';
 import {searchKey,takeSearchResult} from './flight-search.js';
-import {rememberFlight,readJourneys,SAVED_KEY,journeyUrl} from './journeys.js';
+import {rememberFlight,readJourneys,SAVED_KEY,journeyUrl,journeySnapshot} from './journeys.js';
+import SavedFlightCard from './SavedFlightCard.jsx';
 import { travelAdvice } from './travel-advice.js';
 import TravelIntelligence from './TravelIntelligence.jsx';
 import {travelerChance,flightTimingStatus} from './traveler-presentation.js';
@@ -361,6 +362,7 @@ function useSaved() {
   };
   const [storageError,setStorageError]=useState(false);
   useEffect(()=>{const sync=e=>{if(e.key===SAVED_KEY)setSaved(readJourneys(SAVED_KEY));};addEventListener('storage',sync);return()=>removeEventListener('storage',sync);},[]);
+  useEffect(()=>{const sync=()=>setSaved(readJourneys(SAVED_KEY));addEventListener('envolio:journeys-updated',sync);return()=>removeEventListener('envolio:journeys-updated',sync);},[]);
   return {
     saved,
     storageError,
@@ -665,34 +667,7 @@ function Home({ go, saved, remove }) {
           </div>
           {saved.length ? (
             <div className="saved-grid">
-              {saved.map((i) => (
-                <article className="saved-card" key={i.key}>
-                  <button
-                    className="saved-main"
-                    onClick={() =>
-                      go(
-                        `${base}flight/${i.ident}?date=${i.date}${code(i.origin) !== "—" ? `&origin=${code(i.origin)}` : ""}`,
-                      )
-                    }
-                  >
-                    <span className="saved-ident">
-                      <Star size={13} fill="currentColor" /> {i.ident}
-                    </span>
-                    <span>
-                      {code(i.origin)} <ArrowRight size={13} />{" "}
-                      {code(i.destination)}
-                    </span>
-                    <time>{dateLabel(i.date)}</time>
-                  </button>
-                  <button
-                    className="remove-save"
-                    onClick={() => remove(i.key)}
-                    aria-label={`Remove ${i.ident}`}
-                  >
-                    <X size={15} />
-                  </button>
-                </article>
-              ))}
+              {saved.map(item=><SavedFlightCard key={item.key} item={item} go={go} remove={remove} base={base}/>)}
             </div>
           ) : (
             <div className="empty-saved">
@@ -755,13 +730,7 @@ function ExplorePage({ route, go, saved, remove }) {
               ? `${saved.length} favorite flight${saved.length === 1 ? "" : "s"} saved in this browser.`
               : "No saved flights yet. Find a flight and tap Favorite to keep it here."}
           </p>
-          <div className="saved-grid">{saved.map(item=><article className="saved-card" key={item.key}>
-            <button className="saved-main" onClick={()=>go(journeyUrl(item,base))}>
-              <span className="saved-ident">{item.ident}</span>
-              <span>{code(item.origin)} → {code(item.destination)}</span><time>{dateLabel(item.date)}</time>
-            </button>
-            <button className="remove-save" aria-label={`Remove ${item.ident}`} onClick={()=>remove(item.key)}><X size={18}/></button>
-          </article>)}</div>
+          <div className="saved-grid">{saved.map(item=><SavedFlightCard key={item.key} item={item} go={go} remove={remove} base={base}/>)}</div>
           <button className="primary" onClick={()=>go(base)}>Find a flight</button>
           <p>Saved on this device. Open a flight to check for the latest updates.</p>
         </main>
@@ -2719,6 +2688,7 @@ function FlightDetail({ ident, date, go, saved, toggle }) {
                   origin: f.origin,
                   destination: f.destination,
                   operator: f.operator,
+                  snapshot: journeySnapshot(f,state.data.refreshed_at),
                 })
               }
             >
@@ -3128,6 +3098,7 @@ function FlightDetailV2({
                   origin: f.origin,
                   destination: f.destination,
                   operator: f.operator,
+                  snapshot: journeySnapshot(f,state.data.refreshed_at),
                 })
               }
             >
