@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import {loadTakeoffSlot} from './takeoff-slots.js';
 import {RISK_RELEASE,scoreAudit,airportIndicators,historicalTrend} from './risk-audit.js';
 import {monitor,monitoringSummary} from './risk-monitor.js';
 import {apiGuard,publicFeedback} from './web-security.js';
@@ -110,7 +111,7 @@ function departureDate(flight) {
 
 function lookupCacheKey(ident,date,origins) { return `${ident}|${date||'latest'}|${origins.join(',')}`; }
 function cacheLookup(key,payload) { lookupCache.set(key,{payload,savedAt:Date.now()}); }
-function cachedLookup(key) { const item=lookupCache.get(key); return item&&Date.now()-item.savedAt<6*60*60*1000?item:null; }
+function cachedLookup(key) { const item=lookupCache.get(key); return item&&Date.now()-item.savedAt<6*60*60*1000?{...item,payload:{...item.payload,takeoff_slot:{status:'stale',assigned_time:null,reason:'Saved flight details cannot confirm a current takeoff slot.'}}}:null; }
 function identPattern(ident) { const value=String(ident).toUpperCase(),iata=iataToIcao[value.slice(0,2)]?value.slice(0,2):null,match=iata?value.slice(2).match(/^(\d{1,4})/):value.match(/^([A-Z]{3})(\d{1,4})/);return iata&&match?`${iata}#${match[1].length}`:match?`${match[1]}#${match[2].length}`:'invalid'; }
 async function recordTelemetry(type,details={}) {
   const event={type,at:new Date().toISOString(),ident_pattern:identPattern(details.ident),reason:details.reason||null,date_offset:Number.isFinite(details.date_offset)?details.date_offset:null,route_hint:details.route_hint||null};
@@ -532,6 +533,7 @@ app.get('/api/flights/:ident', async (req, res) => {
     diagnostics.freshness = { retrieved_at: refreshedAt, latest_operational_timestamp: latestUpdate, source: 'FlightAware AeroAPI' };
     const payload={ flights: flights.slice(0, 6), requested_date: requestedDate || null, schedule_only:futureSchedule, schedule_notice:futureSchedule?'Published airline schedule. Live status, gate, inbound aircraft, airport conditions, and weather are added closer to departure.':null, resolved_ident: result.candidate, route_options: routeOptions, diagnostics, delay_index: delayIndex, inbound_aircraft: inboundAircraft, aircraft_rotation:aircraftRotation, flight_position: flightPosition, inbound_position: inboundPosition, refreshed_at: refreshedAt };
     payload.delay_reasoning = delayReasoning;
+    payload.takeoff_slot = await loadTakeoffSlot({...selected,schedule_only:futureSchedule});
     cacheLookup(cacheKey,payload);
     res.json(payload);
   } catch {

@@ -1,0 +1,11 @@
+import React,{useEffect,useState} from 'react';
+export default function TakeoffSlot({slot,airport,cached}){
+ const [now,setNow]=useState(Date.now);
+ useEffect(()=>{const timer=setInterval(()=>setNow(Date.now()),30000);return()=>clearInterval(timer);},[]);
+ if(!slot||slot.status==='not_applicable')return null;
+ if(['assigned','revised'].includes(slot.status)&&(!Number.isFinite(Date.parse(slot.verified_at))||now-Date.parse(slot.verified_at)>300000||Date.parse(slot.assigned_time)<now-900000))slot={status:'stale',reason:'This assignment needs a fresh check. Refresh the flight before relying on its takeoff slot.'};
+ const assigned=!cached&&['assigned','revised'].includes(slot.status)&&slot.assigned_time;
+ const time=value=>{try{return new Date(value).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:airport?.timezone||'UTC',timeZoneName:'short'});}catch{return 'Time unavailable';}};
+ if(!assigned)return <details className="takeoff-slot"><summary>ATC takeoff slot · {cached?'saved data':slot.status==='removed'?'removed':slot.status==='not_assigned'?'none reported':'unavailable'}</summary><p>{cached?'A current assignment cannot be confirmed from saved flight details.':slot.status==='removed'?'The source reports that the previous slot was removed. This does not mean the flight is cleared to take off.':slot.status==='not_assigned'?'The connected source explicitly reports no assignment. This is not an on-time guarantee.':slot.reason}</p><p>An estimated takeoff time is not an assigned ATC slot. Follow your airline’s boarding time.</p></details>;
+ return <section className="takeoff-slot assigned" aria-label="Assigned ATC takeoff slot"><span className="traveler-kicker">{slot.authority} · {slot.kind}</span><h3>Assigned takeoff time: {time(slot.assigned_time)}</h3>{slot.status==='revised'&&<p>Assignment updated{slot.previous_time?` from ${time(slot.previous_time)}`:''}.</p>}{slot.reason&&<p>{slot.reason}</p>}<p>{slot.notice}</p><small>Source: {slot.provider} · Verified {time(slot.verified_at)}</small></section>;
+}
