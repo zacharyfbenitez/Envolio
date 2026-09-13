@@ -3,6 +3,10 @@
 .home-page>section{box-sizing:border-box;width:100%;max-width:none;margin:0;padding:0;min-width:0;transform:none!important;opacity:1!important;animation:none!important;filter:none!important}
 .home-page .scroll-reveal,.home-page.scroll-reveal,.home-page .scroll-reveal.scroll-shown{opacity:1!important;transform:none!important;filter:none!important;animation:none!important;transition:none!important}
 .home-page>.hero{padding:24px 0 0;min-height:0;overflow:visible}
+.home-page .home-kicker{display:inline-flex;align-items:center;justify-content:center;gap:8px;max-width:100%;margin:0 0 12px;padding:8px 12px;border:1px solid #ffffff20;border-radius:999px;background:#29252f;color:#e2d8f5;font-family:inherit;font-size:12px;font-weight:700;line-height:1.5;letter-spacing:.06em;box-sizing:border-box;text-align:center}
+.home-kicker>span:last-child{min-width:0;text-wrap:balance;overflow-wrap:normal}
+.home-kicker-dot{flex:0 0 6px;width:6px;height:6px;border-radius:50%;background:#b4e9cf}
+@media(max-width:360px){.home-page .home-kicker{font-size:11px;letter-spacing:.035em;padding:8px 10px}}
 .home-page .hero-brand-art{display:none}
 .home-page .hero h1{max-width:900px;letter-spacing:-.045em}
 .home-page .hero .flight-finder{margin:22px auto 0;width:min(100%,720px)}

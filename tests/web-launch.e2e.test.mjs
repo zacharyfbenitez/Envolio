@@ -13,8 +13,9 @@ test('web launch: contained search, saved flights, recovery and keyboard alerts'
  const browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH||'/usr/bin/chromium',args:['--no-sandbox']});t.after(()=>browser.close());
  const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.setBypassServiceWorker(true);
  const base=`http://127.0.0.1:${server.address().port}`;
- for(const width of [320,390,1440]){
+ for(const width of [320,390,768,1440]){
   await page.setViewport({width,height:900});await page.goto(base);await page.waitForSelector('#flight-query');
+  assert.ok(await page.$eval('.home-kicker',e=>{const r=e.getBoundingClientRect(),p=e.parentElement.getBoundingClientRect();return r.height>24&&r.height<50&&r.left>=p.left&&r.right<=p.right&&e.scrollWidth<=e.clientWidth;}),`headline badge visible and contained at ${width}`);
   assert.ok(await page.$eval('.finder-form',e=>{const a=e.getBoundingClientRect(),b=e.parentElement.getBoundingClientRect();return a.left>=b.left-1&&a.right<=b.right+1;}),`finder containment ${width}`);
   assert.ok(await page.$eval('.home-page',home=>{
    const bounds=home.getBoundingClientRect();let previous=null;

@@ -659,9 +659,10 @@ function Home({ go, saved, remove }) {
             alt=""
             aria-hidden="true"
           />
-          <div className="eyebrow">
-            <span className="ai-pulse" /> FLIGHT UPDATES, MADE SIMPLE
-          </div>
+          <p className="home-kicker">
+            <span className="home-kicker-dot" aria-hidden="true" />
+            <span>FLIGHT UPDATES, MADE SIMPLE</span>
+          </p>
           <h1>
             We know if you’re delayed{" "}
             <br />
