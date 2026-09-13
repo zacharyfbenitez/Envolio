@@ -3,9 +3,20 @@
 .home-page .home-about .product-notes>div{padding:24px;min-height:0;border:1px solid #ffffff20;border-radius:18px;background:#ffffff04;gap:12px}
 .home-page .home-about .product-notes svg{margin:0;color:#c7b8ef;flex-shrink:0}.home-page .home-about .product-notes b{font-size:18px;line-height:1.4}.home-page .home-about .product-notes p{margin:0;max-width:none;color:#d4d3dc;font-size:15px!important}
 .home-about>summary{padding:8px;border-radius:12px}.home-about>summary:focus-visible{outline:2px solid #cab9f6;outline-offset:3px}.home-about>p{padding:0 8px}
-.home-page{position:relative;isolation:isolate}.home-sky{position:absolute;inset:0 0 auto;height:700px;pointer-events:none;z-index:-1;overflow:hidden}.sky-plane{position:absolute;color:#b6a6df;opacity:.32;animation:sky-drift 14s ease-in-out infinite alternate}.sky-plane-0{left:2%;top:100px}.sky-plane-1{right:2%;top:270px;animation-delay:-7s}.sky-plane-2{left:6%;top:440px;animation-delay:-4s}.sky-plane-3{right:5%;top:560px;animation-delay:-10s}.sky-plane:nth-child(even){color:#9edac6}.sky-plane svg{transform:rotate(-20deg)}
-@keyframes sky-drift{from{transform:translate(0,0)}to{transform:translate(12px,-20px)}}
-@media(max-width:1200px){.home-sky{display:none}}@media(prefers-reduced-motion:reduce){.sky-plane{animation:none}}
+.home-page{position:relative;isolation:isolate}.home-sky{position:absolute;inset:0 0 auto;height:760px;pointer-events:none;z-index:-1;overflow:hidden}
+.sky-plane{position:absolute;left:12px;top:100px;width:var(--plane-size,24px);height:var(--plane-size,24px);color:#b9aae3;opacity:var(--plane-opacity,.45);animation:sky-cruise var(--flight-duration,22s) ease-in-out infinite;animation-delay:var(--flight-delay,0s);will-change:transform}
+.sky-plane svg{display:block;width:100%;height:100%;fill:currentColor;fill-opacity:.07;transform:rotate(var(--heading,-12deg))}
+.sky-plane:where(:nth-child(even)){left:auto;right:42px;color:#a5dcca;--heading:155deg;animation-direction:reverse}
+.sky-plane-0{top:100px;--plane-size:29px;--flight-delay:-3s}
+.sky-plane-1{top:145px;right:68px;--plane-size:23px;--flight-duration:25s;--flight-delay:-14s}
+.sky-plane-2{top:265px;left:62px;--plane-size:19px;--plane-opacity:.3;--flight-duration:27s;--flight-delay:-10s}
+.sky-plane-3{top:305px;right:38px;--plane-size:31px;--flight-duration:23s;--flight-delay:-5s}
+.sky-plane-4{top:460px;left:24px;--plane-size:26px;--flight-duration:24s;--flight-delay:-18s}
+.sky-plane-5{top:490px;right:86px;--plane-size:19px;--plane-opacity:.3;--flight-duration:29s;--flight-delay:-11s}
+.sky-plane-6{top:650px;left:68px;--plane-size:18px;--plane-opacity:.28;--flight-duration:28s;--flight-delay:-20s}
+.sky-plane-7{top:665px;right:52px;--plane-size:25px;--flight-duration:26s;--flight-delay:-7s}
+@keyframes sky-cruise{0%,100%{transform:translate(0,0) rotate(-8deg)}25%{transform:translate(28px,-38px) rotate(5deg)}50%{transform:translate(12px,-85px) rotate(-4deg)}75%{transform:translate(-8px,-42px) rotate(-14deg)}}
+@media(max-width:1300px){.home-sky{display:none}}@media(prefers-reduced-motion:reduce){.sky-plane{animation:none;will-change:auto}}
 .airport-explorer{max-width:960px;margin-inline:auto;box-sizing:border-box;width:100%}.airport-condition-label{font-size:16px!important;line-height:1.5;white-space:normal!important;padding:8px 12px;border-radius:12px;background:#ffffff08}.airport-condition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.airport-pressure .pressure-factor{padding:18px;border:1px solid #ffffff20;border-radius:16px;background:#ffffff04;min-width:0}.airport-pressure .pressure-factor.caution{border-color:#c3934e66;background:#a9752210}.airport-pressure .pressure-factor strong{font-size:17px;color:#f4f3f8}.airport-pressure .pressure-factor p{margin-bottom:0;font-size:16px}.airport-pressure .airport-updated{font-size:14px;color:#d0cddd}.airport-pressure details{border-top:1px solid #ffffff25;padding-top:14px}.airport-source-row{padding:12px 0;border-bottom:1px solid #ffffff20}.airport-pressure .airport-action{font-size:17px;color:#e8e5ef}
 @media(max-width:700px){.home-page .home-about .product-notes,.airport-condition-grid{grid-template-columns:1fr}.home-page .home-about .product-notes>div{padding:20px}}
 .inbound-aircraft-facts>div{min-width:0;overflow-wrap:anywhere}.inbound-history-heading{font-size:18px;margin:20px 0 12px;color:#f5f5fa}
