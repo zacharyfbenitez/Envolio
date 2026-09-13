@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {Plane,MapPin} from 'lucide-react';
 import {inboundOverview,inboundArrivalStatus} from './traveler-presentation.js';
@@ -15,6 +16,7 @@ export default function InboundSummary({flight,position,current,refreshed,cached
   <header><Plane size={23}/><div><span className="traveler-kicker">Your incoming plane</span><h3 id="inbound-heading">{info.title}</h3></div></header>
   {flight?.origin&&<p className="inbound-origin"><MapPin size={16} aria-hidden="true"/><span>From <strong>{flight.origin.city||flight.origin.name||flight.origin.code_iata||'an unreported airport'}</strong>{flight.origin.code_iata&&(flight.origin.city||flight.origin.name)&&<span className="inbound-origin-code"> · {flight.origin.code_iata}</span>}</span></p>}
   {flight?<dl><div><dt>{info.arrived?'At your airport’s gate':info.estimated?'Expected gate arrival':'Scheduled gate arrival'}</dt><dd>{time(info.arrival,current.origin?.timezone)}<span className={`inbound-arrival-status ${arrivalStatus.tone}`}>{arrivalStatus.label}</span></dd></div><div><dt>Time between flights</dt><dd>{info.turnMinutes===null?'Timing not confirmed':info.turnMinutes<0?`${Math.abs(info.turnMinutes)} minutes after your scheduled departure`:`${info.turnMinutes} min`}</dd></div></dl>:<p>We’ll show your plane here once its previous flight is confirmed.</p>}
+  {info.map&&<figure className="inbound-mini-map"><iframe title="Incoming plane’s last reported location" loading="lazy" referrerPolicy="no-referrer" src={`https://www.openstreetmap.org/export/embed.html?bbox=${Math.max(-180,position.longitude-3)},${Math.max(-85,position.latitude-2)},${Math.min(180,position.longitude+3)},${Math.min(85,position.latitude+2)}&layer=mapnik&marker=${position.latitude},${position.longitude}`}/><figcaption>Reported position · {time(position.timestamp,current.origin?.timezone)} · Map © OpenStreetMap contributors</figcaption></figure>}
   <details className="inbound-details"><summary>Track plane &amp; details</summary>
   <dl className="inbound-aircraft-facts"><div><dt>Tail number</dt><dd>{flight?.registration||current.registration||'Not confirmed'}</dd></div><div><dt>Aircraft</dt><dd>{flight?.aircraft_type_friendly||current.aircraft_type_friendly||flight?.aircraft_type||current.aircraft_type||'Not confirmed'}</dd></div></dl>
   {flight?.scheduled_in&&<p className="inbound-note">Originally due at your gate: {time(flight.scheduled_in,current.origin?.timezone)}.</p>}

@@ -4,12 +4,13 @@ import './intelligence.css';
 import {DecisionPanels} from './DecisionPanels.jsx';
 import {weatherWords} from './traveler-presentation.js';
 import './clarity.css';
+import {WeatherWindow} from './TravelPolish.jsx';
 
 const labels = { gate_origin:'Departure gate',terminal_origin:'Departure terminal',gate_destination:'Arrival gate',terminal_destination:'Arrival terminal',baggage_claim:'Baggage belt' };
 const when = value => value ? new Date(value).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : 'Time not supplied';
 const availability = status => ({not_configured:'Not connected',plan_restricted:'Not included in the connected plan',rate_limited:'Provider is busy',budget_limited:'Refresh budget reached',outside_window:'Not available for this flight time',not_found:'No data published',stale:'Saved data — not used as current evidence'}[status] || 'Temporarily unavailable');
 
-export default function TravelIntelligence({ ident, date, origin, destination, departure, refreshed, cached, onRefresh }) {
+export default function TravelIntelligence({ ident, date, origin, destination, departure, refreshed, cached, onRefresh, hideConnection, externalConnection, flightDeparture, flightArrival }) {
   const [state,setState] = useState({loading:true}),[attempt,setAttempt] = useState(0);
   const [extra,setExtra] = useState(null);
   const extraGeneration=useRef(0);
@@ -62,13 +63,14 @@ export default function TravelIntelligence({ ident, date, origin, destination, d
         <span className="traveler-kicker">{a.side==='origin'?'Departure':'Arrival'} · {a.airport || 'Airport'}</span>
         <h4><Cloud size={19}/> {a.forecast?.status==='available'?'Forecast for your flight':'Forecast not available yet'}</h4>
         <p>{a.forecast?.status==='available'?weatherWords(a.forecast.summary):'We don’t have a verified forecast covering your flight time. Check again closer to departure.'}</p>
+        <WeatherWindow airport={a} target={a.side==='origin'?flightDeparture:flightArrival}/>
         {a.forecast?.raw && <details><summary>Read the published forecast</summary><p>{a.forecast.raw}</p><small>Raw TAF via Skylink. A decoded summary is withheld when its time periods cannot be verified.</small></details>}
         {a.forecast?.modifiers?.map((m,i)=><p className="forecast-caveat" key={i}>{Number.isFinite(m.weather_probability)?`${m.weather_probability}% chance of`:m.type==='BECMG'?'Conditions may change to':'Possible temporary conditions'}: {weatherWords(m.summary)}</p>)}
         {a.forecast?.status==='available' && <small>TAF via Skylink · valid until {when(a.forecast.valid_until)}. Weather odds are not delay odds.</small>}
         {a.weather?.observations?.[0] && <details><summary>Weather observed now (not a forecast)</summary><p>{weatherWords(a.weather.observations[0].conditions || a.weather.observations[0].cloud_friendly || 'Weather report available')}{Number.isFinite(a.weather.observations[0].wind_speed)?` · ${weatherWords(`wind ${a.weather.observations[0].wind_speed} kt`)}`:''}</p><small>METAR via Skylink · observed {when(a.weather.observations[0].time)}</small></details>}
         {a.notices?.map(n=><div className="airport-notice" key={n.id}><strong>{n.title}</strong><p>{n.note}</p><details><summary>Read published notice</summary><p>{n.detail}</p><small>{n.id} · {n.source}</small></details></div>)}
       </article>)}</div><p className="weather-footnote">Weather can affect flying, but a rain forecast is not a delay prediction. Weather report times use your device’s time zone.</p></div>
-      <details className="traveler-details journey-tools"><summary>Have a connection or need a backup plan?</summary><DecisionPanels data={data} url={url} query={query} date={date} onRefresh={onRefresh}/></details>
+      <details className="traveler-details journey-tools"><summary>Have a connection or need a backup plan?</summary><DecisionPanels data={data} url={url} query={query} date={date} onRefresh={onRefresh} hideConnection={hideConnection} externalConnection={externalConnection}/></details>
       <details className="intelligence-receipts"><summary>Sources &amp; what these checks mean</summary><p>{data.policy}</p>
         {[comparison?.receipt,...(data.extra_receipts||[]),...(data.airports || []).flatMap(a=>a.receipts || [])].filter(Boolean).map((r,i)=><div key={i}><code>{r.endpoint}</code><span>{r.status==='available'?`${r.cached?'Cached · ':''}fetched ${when(r.retrieved_at)}`:availability(r.status)}</span></div>)}
       </details>

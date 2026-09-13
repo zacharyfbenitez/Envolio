@@ -1,4 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
+import {travelerAlert} from '../alert-delivery.js';
+import {NextJourney,UpdateStrip} from './TravelPolish.jsx';
+import {ConnectionProtection} from './DecisionPanels.jsx';
 import WebShell from './WebShell.jsx';
 import FlightSearch from './FlightSearch.jsx';
 import {searchKey,takeSearchResult} from './flight-search.js';
@@ -34,6 +37,7 @@ import {
   X,
 } from "lucide-react";
 
+      document.querySelector(".web-content")?.scrollTo({top:0,behavior:"instant"});
 const today = localISO(new Date()),
   base = import.meta.env.BASE_URL;
 const code = (a) => {
@@ -561,6 +565,7 @@ function Home({ go, saved, remove }) {
           </p>
           <SearchForm go={go} />
         </section>
+        <NextJourney saved={saved} go={go} remove={remove} base={base}/>
         <ExampleFlights go={go} />
         <ProductShowcase />
         <AirportExplorer />
@@ -1377,6 +1382,8 @@ function DisruptionAdvice({ flight, inbound, changes }) {
   );
 }
 function DeliverySignup({ flightKey, prefs }) {
+  const [capabilities,setCapabilities]=useState(null),[consent,setConsent]=useState(false);
+  useEffect(()=>{const controller=new AbortController();fetch(`${base}api/alerts/capabilities`,{signal:controller.signal}).then(r=>r.ok?r.json():{}).then(data=>{setCapabilities(data);if(!data.email&&data.sms)setChannel('sms');}).catch(()=>{if(!controller.signal.aborted)setCapabilities({});});return()=>controller.abort();},[]);
   const [channel, setChannel] = useState("email"),
     [contact, setContact] = useState(""),
     [message, setMessage] = useState(""),
@@ -1391,6 +1398,7 @@ function DeliverySignup({ flightKey, prefs }) {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             channel,
+            consent,
             contact,
             flight,
             date,
@@ -1409,15 +1417,16 @@ function DeliverySignup({ flightKey, prefs }) {
       setWorking(false);
     }
   };
+  if(!capabilities)return <p role="status">Checking text and email availability…</p>;
+  if(!capabilities.email&&!capabilities.sms)return <section className="delivery-signup"><b>Text and email alerts aren’t available yet</b><p>You can still use browser alerts while this flight page is open. No contact details needed.</p></section>;
   return (
     <section className="delivery-signup">
       <div>
         <b>
-          Email or SMS <em>Provider preview</em>
+          Flight alerts
         </b>
         <p>
-          Background delivery activates only when a delivery provider is
-          configured. On-device alerts above are available now.
+          Choose the updates you want. Browser alerts only run while this flight page is open.
         </p>
       </div>
       <div className="delivery-controls">
@@ -1428,8 +1437,8 @@ function DeliverySignup({ flightKey, prefs }) {
             setMessage("");
           }}
         >
-          <option value="email">Email</option>
-          <option value="sms">SMS</option>
+          {capabilities.email&&<option value="email">Email</option>}
+          {capabilities.sms&&<option value="sms">SMS</option>}
         </select>
         <input
           value={contact}
@@ -1437,11 +1446,12 @@ function DeliverySignup({ flightKey, prefs }) {
           placeholder={channel === "email" ? "you@example.com" : "+14155550123"}
           aria-label={channel === "email" ? "Email address" : "Mobile number"}
         />
-        <button onClick={submit} disabled={working || !contact}>
-          {working ? "Checking" : "Check availability"}
+        <button onClick={submit} disabled={working || !contact || !consent || !Object.values(prefs).some(Boolean)}>
+          {working ? "Setting up…" : "Turn on alerts"}
         </button>
       </div>
-      {message && <small>{message}</small>}
+      <label className="delivery-consent"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/>I agree to receive the selected updates for this flight. Message and data rates may apply.</label>
+      {message && <small role="status">{message}</small>}
     </section>
   );
 }
@@ -1452,7 +1462,7 @@ function AlertSettings({ open, onClose, flightKey, flightLabel }) {
     if(!open)return;
     const previous=document.activeElement,overflow=document.body.style.overflow;
     document.body.style.overflow='hidden';
-    const focusables=()=>[...sheet.current.querySelectorAll('button,input,a[href],[tabindex="0"]')].filter(e=>!e.disabled&&e.getClientRects().length);
+    const focusables=()=>[...sheet.current.querySelectorAll('button,input,select,a[href],[tabindex="0"]')].filter(e=>!e.disabled&&e.getClientRects().length);
     focusables()[0]?.focus();
     const keyboard=e=>{
       if(e.key==='Escape'){e.preventDefault();closeAction.current();}
@@ -1599,14 +1609,15 @@ function AlertEmitter({ flight, inbound, index, flightKey }) {
         estimated_out: flight.estimated_out || null,
         phase: flightPhase(flight),
         baggage: flight.baggage_claim || null,
-        inboundPhase: inbound ? flightPhase(inbound) : null,
+        inboundPhase: inbound?.actual_in ? "at_gate" : inbound ? flightPhase(inbound) : null,
+        cancelled: !!flight.cancelled,
         boarding: depart
           ? Date.now() >= new Date(depart).getTime() - 45 * 60e3
           : false,
         probability: index?.score ?? null,
         probabilityReason: index?.movement?.drivers?.[0]?.label || null,
       };
-    localStorage.setItem(stateKey, JSON.stringify(snapshot));
+    try{localStorage.setItem(stateKey, JSON.stringify(snapshot));}catch{/* Alerts must not break flight rendering when storage is blocked. */}
     if (
       !previous ||
       typeof Notification === "undefined" ||
@@ -1614,6 +1625,7 @@ function AlertEmitter({ flight, inbound, index, flightKey }) {
     )
       return;
     const events = [];
+    if(prefs.delay&&!previous.cancelled&&snapshot.cancelled)events.push(["Flight cancelled",travelerAlert({event:"cancelled"})]);
     if (
       prefs.gate &&
       (previous.gate_origin !== snapshot.gate_origin ||
@@ -1621,21 +1633,21 @@ function AlertEmitter({ flight, inbound, index, flightKey }) {
     )
       events.push([
         "Gate assignment changed",
-        `Now ${snapshot.terminal_origin ? `Terminal ${snapshot.terminal_origin}, ` : ""}${snapshot.gate_origin ? `Gate ${snapshot.gate_origin}` : "check airport screens"}.`,
+        travelerAlert({event:"gate",after:[snapshot.terminal_origin&&`Terminal ${snapshot.terminal_origin}`,snapshot.gate_origin&&`Gate ${snapshot.gate_origin}`].filter(Boolean).join(", ")}),
       ]);
     if (
       prefs.inbound &&
-      previous.inboundPhase !== "landed" &&
-      snapshot.inboundPhase === "landed"
+      previous.inboundPhase !== "at_gate" &&
+      snapshot.inboundPhase === "at_gate"
     )
       events.push([
         "Aircraft arrived",
-        "The inbound aircraft has reached the departure airport.",
+        travelerAlert({event:'inbound'}),
       ]);
     if (prefs.boarding && !previous.boarding && snapshot.boarding)
       events.push([
         "Boarding soon",
-        "Stay near the gate and watch the airline display.",
+        travelerAlert({event:'boarding'}),
       ]);
     if (
       prefs.delay &&
@@ -1648,7 +1660,7 @@ function AlertEmitter({ flight, inbound, index, flightKey }) {
     )
       events.push([
         "Departure time updated",
-        `The latest estimate is ${clock(snapshot.estimated_out, flight.origin?.timezone)}.`,
+        travelerAlert({event:'delay',after:clock(snapshot.estimated_out,flight.origin?.timezone)}),
       ]);
     if (
       prefs.probability &&
@@ -1677,7 +1689,7 @@ function AlertEmitter({ flight, inbound, index, flightKey }) {
     if (prefs.baggage && !previous.baggage && snapshot.baggage)
       events.push([
         "Baggage claim assigned",
-        `Collect bags at ${snapshot.baggage}.`,
+        travelerAlert({event:'baggage',after:snapshot.baggage}),
       ]);
     events
       .slice(0, 2)
@@ -2702,7 +2714,10 @@ function FlightDetailV2({
   });
   const [attempt, setAttempt] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
-  const [alertsOpen, setAlertsOpen] = useState(false);
+  const [connectionCheck,setConnectionCheck]=useState(null);
+  useEffect(()=>setConnectionCheck(null),[ident,date,origin,destination,departure]);
+  const [alertsOpen, setAlertsOpen] = useState(()=>new URLSearchParams(location.search).get('alerts')==='1');
+  useEffect(()=>{const open=()=>setAlertsOpen(true);window.addEventListener('envolio:open-alerts',open);return()=>window.removeEventListener('envolio:open-alerts',open);},[]);
   const [shareCardOpen, setShareCardOpen] = useState(false);
   const [shared, setShared] = useState(false);
   const browserCacheKey = `contrail.lookup.${ident}.${date}.${origin}.${destination}${departure?`.${departure}`:''}`;
@@ -3021,6 +3036,7 @@ function FlightDetailV2({
           date={date}
           go={go}
         />
+        <UpdateStrip flight={f} refreshed={state.data.refreshed_at} cached={state.data.cache_fallback?.active}/>
         <section className="route-panel">
           <div className="route-date">
             <span>
@@ -3089,17 +3105,8 @@ function FlightDetailV2({
               </small>
             </div>
           </div>
-        </section>
-        {phase === 'upcoming' && <InboundSummary flight={inbound} position={state.data.inbound_position} current={f} refreshed={state.data.refreshed_at} cached={state.data.cache_fallback?.active} rotation={state.data.aircraft_rotation}/>}
-        <div className="result-brief">
-          <NextStepCard flight={f} data={state.data} changes={changes} />
           {phase === 'upcoming' && !f.cancelled && !/cancel/i.test(f.status||'') && <TravelerOutlook data={state.data} future={state.data.schedule_only} />}
-        </div>
-        {!f.actual_off && !f.actual_in && !f.cancelled && <TakeoffSlot slot={state.data.takeoff_slot} airport={f.origin} scheduled={f.scheduled_out} cached={state.data.cache_fallback?.active}/>}
-        {phase === 'upcoming' && !!state.data.delay_index?.operational_warnings?.length && <details className="operational-warnings" aria-label="Weather and aircraft warnings"><summary>What to watch · {state.data.delay_index.operational_warnings.length} updates</summary><p>These signals can affect your flight. They are not all confirmed causes of a delay.</p>{state.data.delay_index.operational_warnings.map((warning,i)=><details key={`${warning.kind}-${i}`}><summary>{warning.airport?`${warning.airport}: `:''}{warning.title}</summary><p>{warning.detail}</p><small>{warning.source}{warning.issued_at?` · Forecast issued ${new Date(warning.issued_at).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'})}`:''}</small>{warning.periods?.length>0&&<div><p>Forecast periods · your device’s time zone</p>{warning.periods.map((period,n)=><p key={n}>{new Date(period.from).toLocaleString()} – {new Date(period.to).toLocaleString()}{period.weather_probability!=null?` · ${period.weather_probability}% chance of the weather, not of a flight delay`:''}</p>)}</div>}</details>)}</details>}
-        {phase === "upcoming" ? (
-          <>
-            {!state.data.schedule_only && <section className="detail-grid phase-upcoming">
+          {phase === 'upcoming' && !state.data.schedule_only && <section className="detail-grid phase-upcoming">
               {upcomingDetails.slice(0, 2).map(([label, value]) => (
                 <ChangeAwareValue
                   key={label}
@@ -3109,6 +3116,17 @@ function FlightDetailV2({
                 />
               ))}
             </section>}
+        </section>
+        {phase === 'upcoming' && <InboundSummary flight={inbound} position={state.data.inbound_position} current={f} refreshed={state.data.refreshed_at} cached={state.data.cache_fallback?.active} rotation={state.data.aircraft_rotation}/>}
+        <div className="result-brief">
+          <NextStepCard flight={f} data={state.data} changes={changes} />
+
+        </div>
+        {!f.actual_off && !f.actual_in && !f.cancelled && <TakeoffSlot slot={state.data.takeoff_slot} airport={f.origin} scheduled={f.scheduled_out} cached={state.data.cache_fallback?.active}/>}
+        {phase === 'upcoming' && !!state.data.delay_index?.operational_warnings?.length && <details className="operational-warnings" aria-label="Weather and aircraft warnings"><summary>What to watch · {state.data.delay_index.operational_warnings.length} updates</summary><p>These signals can affect your flight. They are not all confirmed causes of a delay.</p>{state.data.delay_index.operational_warnings.map((warning,i)=><details key={`${warning.kind}-${i}`}><summary>{warning.airport?`${warning.airport}: `:''}{warning.title}</summary><p>{warning.detail}</p><small>{warning.source}{warning.issued_at?` · Forecast issued ${new Date(warning.issued_at).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'})}`:''}</small>{warning.periods?.length>0&&<div><p>Forecast periods · your device’s time zone</p>{warning.periods.map((period,n)=><p key={n}>{new Date(period.from).toLocaleString()} – {new Date(period.to).toLocaleString()}{period.weather_probability!=null?` · ${period.weather_probability}% chance of the weather, not of a flight delay`:''}</p>)}</div>}</details>)}</details>}
+        {phase === "upcoming" ? (
+          <>
+
             {!state.data.schedule_only && <details className="traveler-details"><summary>Departure timeline</summary><TurnTimeline flight={f} inbound={inbound} /></details>}
           </>
         ) : (
@@ -3118,7 +3136,8 @@ function FlightDetailV2({
             refreshed={state.data.refreshed_at}
           />
         )}
-        <details className="traveler-details weather-overview"><summary>Weather &amp; airport updates</summary><TravelIntelligence ident={ident} date={date} origin={origin} destination={destination} departure={departure} refreshed={state.data.refreshed_at} cached={state.data.cache_fallback?.active} onRefresh={refresh} /></details>
+        {!f.cancelled&&!state.data.cache_fallback?.active&&<ConnectionProtection url={`${base}api/flights/${encodeURIComponent(ident)}`} query={new URLSearchParams({date,origin:code(f.origin),destination:code(f.destination),...(departure?{departure}:{})}).toString()} date={date} airport={code(f.destination)} onChecked={setConnectionCheck}/>}
+        <details className="traveler-details weather-overview"><summary>Weather &amp; airport updates</summary><TravelIntelligence ident={ident} date={date} origin={origin} destination={destination} departure={departure} refreshed={state.data.refreshed_at} cached={state.data.cache_fallback?.active} onRefresh={refresh} hideConnection externalConnection={connectionCheck} flightDeparture={f.estimated_out||f.scheduled_out} flightArrival={f.estimated_in||f.scheduled_in}/></details>
         <details className="traveler-details flight-analysis"><summary><span>Flight history &amp; explanation</span><small>Charts, contributing factors, and sources</small></summary>
           {phase === 'upcoming' && <RiskContext index={state.data.delay_index} cached={state.data.cache_fallback?.active}/>}
           <button className="secondary traveler-export" onClick={() => setShareCardOpen(true)}><Download size={16}/> Download a flight card</button>
@@ -3161,6 +3180,7 @@ function FlightDetailV2({
       />
       <Footer go={go} />
       <AlertSettings
+        key={`${ident}.${date}`}
         open={alertsOpen}
         onClose={() => setAlertsOpen(false)}
         flightKey={`${ident}.${date}`}

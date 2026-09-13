@@ -5,7 +5,7 @@ const evidenceLabels={agreement:'Sources agree',single_source:'One source',confl
 const signed=n=>Number.isFinite(n)?`${n>0?'+':''}${n} min`:'Not reported';
 const stamp=t=>t?new Date(t).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'short'}):'Not reported';
 
-export function DecisionPanels({data,url,query,date,onRefresh}) {
+export function DecisionPanels({data,url,query,date,onRefresh,hideConnection,externalConnection}) {
   const [connection,setConnection]=useState(null);
   useEffect(()=>setConnection(null),[url,query,data.checked_at]);
   const b=data.brief;
@@ -13,7 +13,7 @@ export function DecisionPanels({data,url,query,date,onRefresh}) {
   const a=b.aircraft,h=b.history;
   return <div className="decision-panels">
     <div className={`traveler-decision ${b.fields.some(f=>f.needs_traveler_confirmation)?'verify':''}`} role="status"><span className="traveler-kicker">What this means for you</span><h4>{b.traveler_action.title}</h4><p>{b.traveler_action.detail}</p></div>
-    <TripStrategy data={data} url={url} query={query} onRefresh={onRefresh} connection={connection}/>
+    <TripStrategy data={data} url={url} query={query} onRefresh={onRefresh} connection={externalConnection||connection}/>
     <details className="field-evidence"><summary>Do the flight updates agree?</summary><p>These scores describe available evidence—not the percentage chance a detail is correct. Providers may share upstream data.</p><div className="field-grid">{b.fields.map(f=><article key={f.field} className={f.state}><header><strong>{f.label}</strong><b>{f.score}/100</b></header><span>{evidenceLabels[f.state]}</span><p>FlightAware: {f.flightaware ?? 'Not available'}<br/>Skylink: {f.skylink ?? 'Not comparable'}</p><p>{f.explanation}</p></article>)}</div><small>{b.fields[0]?.method}</small></details>
     <details className="aircraft-history"><summary>Your aircraft &amp; recent flight history</summary><div className="decision-grid">
       <article><span className="traveler-kicker">Your aircraft</span><h4>{a.assigned_inbound?'Where is my plane coming from?':'Aircraft assignment'}</h4><strong>{a.registration || 'Tail not published'}{a.assigned_inbound?` · ${a.ident}`:''}</strong><p>{a.advice}</p>
@@ -27,12 +27,12 @@ export function DecisionPanels({data,url,query,date,onRefresh}) {
     </div></details>
     {!data.strategy&&<details className="operating-details"><summary>Why disruption may happen</summary><p>Confirmed reasons are stated by the flight source. Other items are possible contributors—not a diagnosis.</p>{b.reasons.length?b.reasons.map((r,i)=><article key={i}><span className="traveler-kicker">{r.classification==='confirmed'?'Published reason':r.classification==='likely'?'Likely contributor':'Possible contributor'}</span><h4>{r.title}</h4><p>{r.detail}</p><small>{r.source}</small></article>):<p>No supported flight-specific explanation is available yet.</p>}</details>}
     <details className="operating-details"><summary>Airport problems &amp; terminal updates</summary><div className="decision-grid">{b.operations.map(o=><article key={o.side}><span className="traveler-kicker">{o.side==='origin'?'Departure':'Arrival'}</span><h4>{o.airport}</h4>{o.items.length?o.items.map((i,n)=><div className="operations-item" key={n}><strong>{i.title}</strong><p>{i.detail}</p><small>{i.source} · fetched {stamp(i.observed_at)}</small></div>):<p>No applicable advisory verified from the returned data.</p>}<p>{o.terminal_status}</p><small>{o.note}</small></article>)}</div></details>
-    <ConnectionProtection url={url} query={query} date={date} airport={b.operations.find(o=>o.side==='destination')?.airport} onChecked={setConnection}/>
+    {!hideConnection&&<ConnectionProtection url={url} query={query} date={date} airport={b.operations.find(o=>o.side==='destination')?.airport} onChecked={setConnection}/>}
     <LicensedFeatures permissions={data.permissions} historical={data.historical} url={url} query={query}/>
   </div>;
 }
 
-function ConnectionProtection({url,query,date,airport,onChecked}) {
+export function ConnectionProtection({url,query,date,airport,onChecked=()=>{}}) {
   const [ident,setIdent]=useState(''),[nextDate,setNextDate]=useState(date||''),[buffer,setBuffer]=useState(60),[state,setState]=useState({}),generation=useRef(0);
   useEffect(()=>{generation.current++;setState({});setIdent('');setNextDate(date||'');return()=>{generation.current++;}},[url,query,date]);
   const edit=(setter,value)=>{generation.current++;setState({});onChecked(null);setter(value)};

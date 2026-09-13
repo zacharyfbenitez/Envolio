@@ -14,6 +14,7 @@ RUN npm ci --omit=dev
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/server.js ./server.js
 COPY --from=build /app/web-security.js ./web-security.js
+COPY --from=build /app/alert-delivery.js ./alert-delivery.js
 COPY --from=build /app/operational-risk.js ./operational-risk.js
 COPY --from=build /app/risk-audit.js /app/risk-monitor.js ./
 COPY --from=build /app/takeoff-slots.js ./

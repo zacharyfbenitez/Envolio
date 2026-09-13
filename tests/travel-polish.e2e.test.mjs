@@ -1,0 +1,42 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import express from 'express';
+import puppeteer from 'puppeteer-core';
+import {sq12Lookup} from './fixtures/flight-lookups.mjs';
+test('traveler essentials: next trip, changes, map, forecast, connection and alerts',{timeout:180000},async t=>{
+ const date=new Date(Date.now()+86400000*2).toISOString().slice(0,10),data=sq12Lookup(date);data.route_options=[];
+ const f=data.flights[0];data.refreshed_at=new Date().toISOString();
+ data.inbound_aircraft={...f,fa_flight_id:'inbound-test',ident_iata:'SQ11',origin:f.destination,destination:f.origin,status:'En Route',scheduled_in:new Date(Date.parse(f.scheduled_out)-3600000).toISOString()};
+ data.inbound_position={latitude:35,longitude:139,timestamp:new Date().toISOString()};
+ const app=express();app.get('/api/flights/SQ12',(_q,r)=>r.json(data));
+ app.get('/api/flights/SQ12/intelligence',(_q,r)=>r.json({airports:[{side:'origin',airport:'NRT',forecast:{status:'available',summary:'Light rain'},windows:[{at:f.scheduled_out,forecast:{status:'available',summary:'Light rain'}},{at:new Date(Date.parse(f.scheduled_out)+3600000).toISOString(),forecast:{status:'unavailable'}}]}]}));
+ app.get('/api/alerts/capabilities',(_q,r)=>r.json({email:false,sms:false}));
+ app.use('/api',(_q,r)=>r.status(503).json({error:'Fixture unavailable'}));app.use(express.static('dist'));app.use((_q,r)=>r.sendFile(process.cwd()+'/dist/index.html'));
+ const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>{server.closeAllConnections();server.close();});
+ const browser=await puppeteer.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox','--renderer-process-limit=2']});t.after(()=>browser.close());
+ const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const base=process.env.TEST_PUBLIC_URL||`http://127.0.0.1:${server.address().port}`;
+ await page.setBypassServiceWorker(true);
+ await page.setRequestInterception(true);page.on('request',r=>{const u=new URL(r.url());if(process.env.TEST_PUBLIC_URL&&u.pathname.startsWith('/api/')){let body={error:'Fixture unavailable'},status=503;if(u.pathname==='/api/flights/SQ12'){body=data;status=200;}if(u.pathname==='/api/flights/SQ12/intelligence'){body={airports:[{side:'origin',airport:'NRT',forecast:{status:'available',summary:'Light rain'},windows:[{at:f.scheduled_out,forecast:{status:'available',summary:'Light rain'}},{at:new Date(Date.parse(f.scheduled_out)+3600000).toISOString(),forecast:{status:'unavailable'}}]}]};status=200;}if(u.pathname==='/api/alerts/capabilities'){body={email:false,sms:false};status=200;}return r.respond({status,contentType:'application/json',body:JSON.stringify(body)});}return u.hostname===new URL(base).hostname?r.continue():r.abort();});
+ await page.evaluateOnNewDocument(({date,f})=>localStorage.setItem('contrail.saved',JSON.stringify([{ident:'SQ12',date,key:'sq',origin:f.origin,destination:f.destination,snapshot:{scheduled_out:f.scheduled_out}}])),{date,f});
+ for(const width of [1440,390,320]){
+  await page.setViewport({width,height:1000});await page.goto(base,{waitUntil:'domcontentloaded'});await page.waitForSelector('.next-journey');
+  assert.match(await page.$eval('.next-journey',e=>e.textContent),/Your next saved flight/);
+  assert.ok(await page.evaluate(()=>document.querySelector('.web-content').getBoundingClientRect().bottom<=document.querySelector('.dock-shelf').getBoundingClientRect().top));
+  await page.screenshot({path:`/tmp/envolio-essentials-home-${width}.png`});
+  await page.goto(`${base}/flight/SQ12?date=${date}`,{waitUntil:'domcontentloaded'});await page.waitForSelector('.inbound-mini-map iframe');
+  assert.ok(await page.$('.route-panel .projected-delay'));assert.ok(await page.$('.route-panel .phase-upcoming'));
+  assert.equal(await page.$eval('.connection-protection',e=>e.open),false);
+  await page.$eval('.weather-overview',e=>e.open=true);await page.waitForSelector('.weather-window');
+  assert.match(await page.$eval('.weather-window',e=>e.textContent),/Light rain.*Forecast unavailable/);
+  assert.ok(await page.evaluate(()=>[...document.querySelectorAll('.route-panel,.inbound-summary,.weather-overview')].every(e=>e.scrollWidth<=e.clientWidth+1)));
+  await page.$eval('.weather-overview',e=>e.open=false);await page.screenshot({path:`/tmp/envolio-essentials-result-${width}.png`});
+  await page.click('.alerts-button');await page.waitForSelector('.delivery-signup');
+  assert.match(await page.$eval('.delivery-signup',e=>e.textContent),/aren’t available yet/);assert.equal(await page.$('.delivery-signup input'),null);
+  await page.keyboard.press('Escape');
+ }
+ data.flights[0]={...f,gate_origin:'43',estimated_out:new Date(Date.parse(f.scheduled_out)+20*60000).toISOString()};data.refreshed_at=new Date(Date.now()+1000).toISOString();
+ await page.click('.refresh-flight');await page.waitForSelector('.update-strip');assert.match(await page.$eval('.update-strip',e=>e.textContent),/Gate 42 → 43.*Departure 20 min later/);
+ await page.click('.pwa-dock button:last-child');await page.waitForSelector('dialog[open]');assert.match(await page.$eval('dialog',e=>e.textContent),/Your flight alerts.*Manage alerts/);
+ assert.deepEqual(errors,[]);
+});

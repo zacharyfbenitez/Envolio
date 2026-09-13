@@ -1,3 +1,4 @@
+import {alertCapabilities} from './alert-delivery.js';
 import 'dotenv/config';
 import {applySlotRisk} from './slot-risk.js';
 import {loadTakeoffSlot} from './takeoff-slots.js';
@@ -711,14 +712,16 @@ app.post('/api/telemetry/lookup', (req,res)=>{
   res.status(202).json({ recorded:true, privacy:'Only an identifier pattern, reason, relative date, and route hint are retained.' });
 });
 
+app.get('/api/alerts/capabilities',(_req,res)=>res.json(alertCapabilities()));
 app.post('/api/alerts/subscribe', async (req,res)=>{
   if(process.env.ENABLE_ALERT_SUBSCRIPTIONS!=='true')return res.status(503).json({configured:false,error:'Text and email alerts are not available yet. You can check updates here without sharing your contact details.'});
-  const channel=req.body?.channel==='sms'?'sms':'email',contact=String(req.body?.contact||'').trim(),flight=String(req.body?.flight||'').replace(/[^a-z0-9]/gi,'').toUpperCase(),date=String(req.body?.date||''),events=Array.isArray(req.body?.events)?req.body.events.filter(value=>['inbound','gate','boarding','delay','probability','landing','baggage'].includes(value)).slice(0,7):[];
+  if(req.body?.consent!==true)return res.status(400).json({error:'Please agree to receive the selected flight alerts.'});
+  const channel=req.body?.channel==='sms'?'sms':'email',contact=String(req.body?.contact||'').trim(),flight=String(req.body?.flight||'').replace(/[^a-z0-9]/gi,'').toUpperCase(),date=String(req.body?.date||''),events=Array.isArray(req.body?.events)?req.body.events.filter(value=>['inbound','gate','boarding','delay','probability','landing','baggage','cancelled'].includes(value)).slice(0,8):[];
   const valid=channel==='email'?/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact):/^\+[1-9]\d{7,14}$/.test(contact);
   if(!valid||!flight||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(date))return res.status(400).json({error:channel==='sms'?'Enter a valid phone number in international format, such as +14155550123.':'Enter a valid email address.'});
   const configured=!!process.env.ALERT_DELIVERY_WEBHOOK&&(channel==='email'?!!(process.env.RESEND_API_KEY&&process.env.ALERT_FROM_EMAIL):!!(process.env.TWILIO_ACCOUNT_SID&&process.env.TWILIO_AUTH_TOKEN&&(process.env.TWILIO_FROM_NUMBER||process.env.TWILIO_MESSAGING_SERVICE_SID)));
   if(!configured)return res.status(503).json({error:`${channel==='email'?'Email':'SMS'} delivery is not configured on this Envolio deployment. Browser alerts remain available.`,provider:channel==='email'?'Resend':'Twilio',configured:false});
-  const record={id:crypto.randomUUID(),created_at:new Date().toISOString(),channel,contact,flight,date,events,active:true};
+  const record={id:crypto.randomUUID(),created_at:new Date().toISOString(),channel,contact,flight,date,events,active:true,consent_at:new Date().toISOString(),message_contract:'traveler-action-v1'};
   try{const delivery=await upstreamFetch(process.env.ALERT_DELIVERY_WEBHOOK,{method:'POST',headers:{'content-type':'application/json',...(process.env.ALERT_WEBHOOK_SECRET?{authorization:`Bearer ${process.env.ALERT_WEBHOOK_SECRET}`}:{})},body:JSON.stringify(record)});if(!delivery.ok)return res.status(502).json({error:'The background alert worker did not accept this subscription.'});await fs.mkdir(path.dirname(alertSubscriptionFile),{recursive:true});await fs.appendFile(alertSubscriptionFile,`${JSON.stringify(record)}\n`);return res.status(201).json({subscribed:true,id:record.id,channel,events,provider:channel==='email'?'Resend':'Twilio',monitoring:'Background alert worker accepted the subscription.',privacy:'Your contact is stored only to deliver the selected flight alerts.'})}catch{return res.status(500).json({error:'Envolio could not activate background monitoring.'})}
 });
 
