@@ -25,11 +25,12 @@ export function travelerChance(index, future=false, cached=false, refreshed=null
  if(!Number.isFinite(index?.score)||index.score<0||index.score>100||!available.length)return unavailable('There isn’t enough usable evidence to give a delay percentage.','Estimate unavailable. Missing information does not mean an on-time flight.');
  const missing=Object.keys(signalNames).filter(key=>!available.some(f=>f.key===key));
  const drivers=available.filter(f=>f.value>=35).sort((a,b)=>(b.value*(b.weight||0))-(a.value*(a.weight||0))).slice(0,2);
- const why=drivers.length?`${drivers.map(f=>signalNames[f.key]).join(' and ')} ${drivers.length===1?'is':'are'} raising the estimate. A delay is not confirmed.`:'The available history and live updates show less delay pressure. That does not guarantee an on-time departure.';
+ const warnings=index.operational_warnings||[];
+ const why=warnings.length?`${warnings.slice(0,2).map(w=>`${w.airport?`${w.airport}: `:''}${w.title}`).join('. ')}. See the warnings above; these do not confirm a delay.`:drivers.length?`${drivers.map(f=>signalNames[f.key]).join(' and ')} ${drivers.length===1?'is':'are'} raising the estimate. A delay is not confirmed.`:'The available history and live updates show less delay pressure. That does not guarantee an on-time departure.';
  const missingGroups=[...new Set(missing.map(key=>({route:'route history',airline:'airline updates',inbound:'incoming-plane timing',origin_airport:'airport updates',arrival_airport:'airport updates',origin_weather:'weather',arrival_weather:'weather',schedule:'a departure estimate'}[key])))];
  const experimental=!index.calibration?.material_signal;
  const reliability=[experimental?'Experimental estimate—individual-flight accuracy is not yet proven.':'Validated estimate—not a guarantee.',missing.length?`Limited by missing ${missingGroups.join(', ')}. Missing data is not a good-weather or on-time signal.`:index.coverage_percent<100?'Some supporting evidence is missing; reliability is limited.':'All modeled signal groups are available.'].join(' ');
- return {label,percent:Math.round(index.score),tone:index.score>=65?'high':index.score>=35?'caution':'neutral',why,reliability,updated};
+ return {label,percent:Math.round(index.score),tone:index.score>=65?'high':index.score>=35?'caution':'neutral',why,reliability:reliability+(index.input_limitations?.length?' Some earlier-aircraft or forecast checks were unavailable.':''),updated};
 }
 
 export function weatherWords(summary) {

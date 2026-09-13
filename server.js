@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import {apiGuard,publicFeedback} from './web-security.js';
+import {loadTaf,observationRisk,traceRotation,rotationRisk} from './operational-risk.js';
 import {validateRouteQuery,scheduleCandidates,originDayWindow} from './route-search.js';
 import { buildDelayReasoning, loadFaaAdvisories } from './delay-reasoning.js';
 import { loadSkylinkContext, skylink, receipt, metarWeather, compareStatus } from './skylink.js';
@@ -275,6 +276,15 @@ function createLiveDelayIndex(flight,history,context={}) {
   const weatherDetail=data=>{const observation=data?.observations?.[0];return observation?`${observation.wind_friendly||`${observation.wind_speed||0} kt wind`} · ${observation.conditions||observation.cloud_friendly||'no significant weather reported'}`:`No observation returned${awcMetarEnabled?' by FlightAware or Aviation Weather Center':' by FlightAware'}`};
   const weatherSource=data=>data?.provider_detail||'FlightAware AeroAPI decoded airport weather observation';
   const weatherReceipt=data=>{const observation=data?.observations?.[0];return {endpoint:data?.endpoint||(data?.provider==='Aviation Weather Center'?`aviationweather.gov/api/data/metar?ids=${data.station}`:`AeroAPI /airports/${data?.station||'airport'}/weather/observations`),observed_at:observation?.time||observation?.report_time||null,retrieved_at:data?.retrieved_at||null,raw_observation:observation?.raw_data||null}};
+  const weatherInput=(side)=>{
+    const forecast=context[`${side}Forecast`],observation=context[`${side}Weather`],target=side==='origin'?flight.estimated_out||flight.scheduled_out:flight.estimated_in||flight.scheduled_in;
+    const near=Math.abs(Date.parse(target)-Date.now())<=2*3600000;
+    const current=near?observationRisk(observation):null;
+    const predicted=forecast?.status==='available'?forecast.score:null;
+    const available=[current,predicted].filter(Number.isFinite);
+    return {value:available.length?Math.max(...available):null,detail:predicted!==null?forecast.warnings?.[0]?.detail||'Airport forecast covers flight time; no severe weather period matched.':near?weatherDetail(observation):'A current observation does not describe weather several hours ahead; flight-time forecast unavailable.',source:predicted!==null?'NOAA Aviation Weather Center TAF; current observation where applicable':weatherSource(observation),source_detail:{...weatherReceipt(observation),observation_used:Number.isFinite(current),forecast_used:Number.isFinite(predicted),forecast:forecast||null,policy:'Maximum of near-time observation and applicable forecast, not a sum. Earlier weather generates a warning, not an assumed residual delay.'}};
+  };
+  const originWeatherInput=weatherInput('origin'),arrivalWeatherInput=weatherInput('arrival');
   const inbound=context.inbound;
   const arrival=inbound&&(inbound.actual_in||inbound.estimated_in||inbound.scheduled_in);
   const departure=flight.estimated_out||flight.scheduled_out;
@@ -286,11 +296,11 @@ function createLiveDelayIndex(flight,history,context={}) {
   const factors=[
     {key:'route',label:'Recent route history',value:calibratedBaseline,weight:.28,detail:historyRecords.length?`${routeDelayed} of ${historyRecords.length} verified actual departures delayed 15+ min; no future outcomes or current airline prior used in backtesting`:'No comparable actual departures returned',source:history?.meta?.source||'FlightAware AeroAPI historical flights',role:'empirical baseline',source_detail:receipt(`/history/flights/${ident}`,{route:`${origin}-${destination}`,lookback_days:history?.meta?.lookback_days,sample_size:historyRecords.length,delayed_count:routeDelayed,window_limitation:history?.meta?.limitation||null})},
     {key:'airline',label:'Airline operations',value:airlineRisk,weight:.14,detail:airlineSamples.length?`${airlineDelayed} of ${airlineSamples.length} returned operations delayed 15+ min`:'No usable airline operations sample',source:'FlightAware AeroAPI operator flights',role:'empirical prior',source_detail:receipt(`/operators/${flight.operator_icao||flight.operator||'operator'}/flights`,{sample_size:airlineSamples.length,delayed_count:airlineDelayed})},
-    {key:'inbound',label:'Inbound aircraft',value:inboundRisk,weight:.20,detail:inbound?inbound.actual_in?'Aircraft has arrived at the origin':Number.isFinite(turnMinutes)?`${Math.round(turnMinutes)} min expected ground time before departure`:'Inbound timing is incomplete':'No inbound aircraft assigned',source:'FlightAware AeroAPI aircraft rotation',role:'bounded live adjustment',source_detail:receipt(inbound?.fa_flight_id?`/flights/${inbound.fa_flight_id}`:'/flights/{inbound flight}',{inbound_ident:inbound?.ident_iata||inbound?.ident||null,turn_minutes:Number.isFinite(turnMinutes)?Math.round(turnMinutes):null})},
+    {key:'inbound',label:'Inbound aircraft',value:Number.isFinite(context.rotationRisk?.score)?Math.max(inboundRisk||0,context.rotationRisk.score):inboundRisk,weight:.20,detail:context.rotationRisk?.warnings?.[0]?.detail||(inbound?inbound.actual_in?'Aircraft has arrived at the origin':Number.isFinite(turnMinutes)?`${Math.round(turnMinutes)} min expected ground time before departure`:'Inbound timing is incomplete':'No inbound aircraft assigned'),source:'FlightAware AeroAPI aircraft rotation',role:'bounded live adjustment',source_detail:receipt(inbound?.fa_flight_id?`/flights/${inbound.fa_flight_id}`:'/flights/{inbound flight}',{inbound_ident:inbound?.ident_iata||inbound?.ident||null,turn_minutes:Number.isFinite(turnMinutes)?Math.round(turnMinutes):null,rotation:context.rotationRisk||null})},
     {key:'origin_airport',label:'Departure airport',value:airportRisk(context.originDelay),weight:.10,detail:context.originDelay?.reasons?.[0]?.reason||'No active airport delay program returned',source:'FlightAware AeroAPI airport delays',role:'bounded live adjustment',source_detail:receipt(`/airports/${origin}/delays`,{status:context.originDelay?.color||'none reported'})},
     {key:'arrival_airport',label:'Arrival airport',value:airportRisk(context.arrivalDelay),weight:.08,detail:context.arrivalDelay?.reasons?.[0]?.reason||'No active airport delay program returned',source:'FlightAware AeroAPI airport delays',role:'bounded live adjustment',source_detail:receipt(`/airports/${destination}/delays`,{status:context.arrivalDelay?.color||'none reported'})},
-    {key:'origin_weather',label:'Departure weather',value:weatherRisk(context.originWeather),weight:.08,detail:weatherDetail(context.originWeather),source:weatherSource(context.originWeather),role:'bounded live adjustment',source_detail:weatherReceipt(context.originWeather)},
-    {key:'arrival_weather',label:'Arrival weather',value:weatherRisk(context.arrivalWeather),weight:.05,detail:weatherDetail(context.arrivalWeather),source:weatherSource(context.arrivalWeather),role:'bounded live adjustment',source_detail:weatherReceipt(context.arrivalWeather)},
+    {key:'origin_weather',label:'Departure weather',weight:.08,role:'bounded live adjustment',...originWeatherInput},
+    {key:'arrival_weather',label:'Arrival weather',weight:.05,role:'bounded live adjustment',...arrivalWeatherInput},
     {key:'schedule',label:'Current schedule',value:scheduleRisk,weight:.07,detail:Number.isFinite(scheduleMinutes)?`${Math.round(scheduleMinutes)} min current departure variance`:'No live departure estimate returned',source:'FlightAware AeroAPI schedule and estimates',role:'bounded live adjustment',source_detail:receipt(`/flights/${flight.fa_flight_id||ident}`,{scheduled_out:flight.scheduled_out||null,estimated_out:flight.estimated_out||null,actual_out:flight.actual_out||null,variance_minutes:Number.isFinite(scheduleMinutes)?Math.round(scheduleMinutes):null})}
   ];
   if(flight.schedule_only)for(const factor of factors)if(factor.key!=='route'){factor.value=null;factor.detail='Live conditions are not applied to a future schedule.';}
@@ -460,13 +470,14 @@ app.get('/api/flights/:ident', async (req, res) => {
     let flightPosition = null;
     let inboundPosition = null;
     let delayReasoning = null;
+    let aircraftRotation = {legs:[],warnings:[]};
     if (selected) {
       const airport = selected.origin?.code || selected.origin?.code_icao || selected.origin?.code_iata;
       const arrivalAirport = selected.destination?.code || selected.destination?.code_icao || selected.destination?.code_iata;
       const originWeatherAirport = { lookup: airport, icao: selected.origin?.code_icao || (/^[A-Z0-9]{4}$/.test(airport || '') ? airport : null) };
       const arrivalWeatherAirport = { lookup: arrivalAirport, icao: selected.destination?.code_icao || (/^[A-Z0-9]{4}$/.test(arrivalAirport || '') ? arrivalAirport : null) };
       const operator = selected.operator_icao || selected.operator || null;
-      const [history, originDelay, originWeather, inbound, destinationDelay, destinationWeather, airline, faa] = await Promise.all([
+      const [history, originDelay, originWeather, inbound, destinationDelay, destinationWeather, airline, faa,originForecast,arrivalForecast] = await Promise.all([
         loadComparableHistory(selected.ident || ident, selected),
         !futureSchedule&&airport ? aeroCached(`/airports/${encodeURIComponent(airport)}/delays`) : null,
         !futureSchedule?weatherWithFallback(originWeatherAirport):null,
@@ -474,17 +485,25 @@ app.get('/api/flights/:ident', async (req, res) => {
         !futureSchedule&&arrivalAirport ? aeroCached(`/airports/${encodeURIComponent(arrivalAirport)}/delays`) : null,
         !futureSchedule?weatherWithFallback(arrivalWeatherAirport):null,
         operator ? aeroCached(`/operators/${encodeURIComponent(operator)}/flights?max_pages=1`,300000) : null,
-        !futureSchedule && !selected.actual_out && Math.abs(Date.now()-new Date(selected.scheduled_out).getTime()) < 6*60*60*1000 ? loadFaaAdvisories() : null
+        !futureSchedule && !selected.actual_out && Math.abs(Date.now()-new Date(selected.scheduled_out).getTime()) < 6*60*60*1000 ? loadFaaAdvisories() : null,
+        !futureSchedule&&!selected.actual_out?loadTaf(originWeatherAirport.icao,selected.estimated_out||selected.scheduled_out):null,
+        !futureSchedule&&!selected.actual_in?loadTaf(arrivalWeatherAirport.icao,selected.estimated_in||selected.scheduled_in):null
       ]);
-      inboundAircraft = inbound?.flights?.[0] || null;
+      inboundAircraft = inbound?.flights?.find(f=>f.fa_flight_id===selected.inbound_fa_flight_id) || null;
+      if(!futureSchedule&&!selected.actual_out)aircraftRotation=await traceRotation(selected,inboundAircraft,p=>aeroCached(p,120000));
+      const currentAirports=new Set([originWeatherAirport.icao,arrivalWeatherAirport.icao]);
+      const forecastLegs=aircraftRotation.legs.filter(leg=>!leg.actual_out&&!currentAirports.has(leg.origin?.code_icao||leg.origin?.code)).slice(0,2);
+      const rotationForecasts=await Promise.all(forecastLegs.map(async leg=>({ident:leg.ident_iata||leg.ident,forecast:await loadTaf(leg.origin?.code_icao||leg.origin?.code,leg.estimated_out||leg.scheduled_out)})));
+      const rotation=rotationRisk(aircraftRotation,selected,rotationForecasts);
       delayReasoning = buildDelayReasoning(selected, { originDelay, originWeather, arrivalDelay:destinationDelay, arrivalWeather:destinationWeather, inbound:inboundAircraft, faa });
       const previousContext=flightContexts.get(flightContextKey(selected));
       const assignmentChanges=previousContext?.assignment_changes||[];
       if(previousContext?.registration&&selected.registration&&previousContext.registration!==selected.registration)assignmentChanges.push({from:previousContext.registration,to:selected.registration,at:new Date().toISOString()});
       flightContexts.set(flightContextKey(selected),{registration:selected.registration,assignment_changes:assignmentChanges.slice(-5),originDelay,arrivalDelay:destinationDelay,inbound:inboundAircraft,reasoning:delayReasoning,history:history?.flights||[],retrieved_at:new Date().toISOString()});
       if(flightContexts.size>300)flightContexts.delete(flightContexts.keys().next().value);
-      delayIndex = createLiveDelayIndex(selected,history,{originDelay,originWeather,arrivalDelay:destinationDelay,arrivalWeather:destinationWeather,airline,inbound:inboundAircraft});
-      if(delayIndex){delayIndex.model_version='route-baseline-v2';delayIndex.methodology='Actual-departure-only route baseline plus unvalidated heuristic live adjustments. Backtesting uses only outcomes known before each historical departure; it does not validate the full live index. Skylink weather is used only as a labeled fallback, never an extra independent vote.';delayIndex.live_series=await recordIndexSnapshot(`v2|${selected.fa_flight_id||`${selected.ident}|${selected.scheduled_out}`}`,delayIndex);}
+      delayIndex = createLiveDelayIndex(selected,history,{originDelay,originWeather,originForecast,arrivalForecast,rotationRisk:rotation,arrivalDelay:destinationDelay,arrivalWeather:destinationWeather,airline,inbound:inboundAircraft});
+      if(delayIndex){delayIndex.input_limitations=[...aircraftRotation.warnings,...rotationForecasts.filter(f=>f.forecast.status!=='available').map(f=>`Earlier flight forecast unavailable: ${f.ident}`)];delayIndex.weather_strategy={...delayIndex.weather_strategy,primary:'Flight-time TAF and near-time METAR',origin_provider:delayIndex.factors.find(f=>f.key==='origin_weather'&&f.value!==null)?.source||null,arrival_provider:delayIndex.factors.find(f=>f.key==='arrival_weather'&&f.value!==null)?.source||null,policy:'Each airport weather factor uses a maximum of flight-time forecast and near-time observation. Source receipts state which inputs were used; no provider vote is added twice.'};}
+      if(delayIndex){delayIndex.operational_warnings=[...(originForecast?.warnings||[]).map(w=>({...w,airport:selected.origin?.code_iata||airport})),...(arrivalForecast?.warnings||[]).map(w=>({...w,airport:selected.destination?.code_iata||arrivalAirport})),...rotation.warnings];delayIndex.model_version='weather-rotation-v3';delayIndex.methodology='Actual-departure-only route baseline plus unvalidated live adjustments. Flight-time TAF and near-time observations use a maximum, not a sum. Earlier weather warns without assuming carry-over. Verified previous aircraft legs use absorbed-delay propagation; combined inbound risk uses a maximum, not a sum. Backtesting validates only the historical baseline, not these operational heuristics.';delayIndex.live_series=await recordIndexSnapshot(`v3|${selected.fa_flight_id||`${selected.ident}|${selected.scheduled_out}`}`,delayIndex);}
       const [selectedPosition, priorPosition] = await Promise.all([
         selected.actual_out && !selected.actual_in && selected.fa_flight_id ? aero(`/flights/${encodeURIComponent(selected.fa_flight_id)}/position`) : null,
         inboundAircraft?.actual_out && !inboundAircraft?.actual_in && inboundAircraft.fa_flight_id ? aero(`/flights/${encodeURIComponent(inboundAircraft.fa_flight_id)}/position`) : null
@@ -495,7 +514,7 @@ app.get('/api/flights/:ident', async (req, res) => {
     const refreshedAt = new Date().toISOString();
     const latestUpdate = flightPosition?.timestamp || selected.actual_in || selected.actual_out || null;
     diagnostics.freshness = { retrieved_at: refreshedAt, latest_operational_timestamp: latestUpdate, source: 'FlightAware AeroAPI' };
-    const payload={ flights: flights.slice(0, 6), requested_date: requestedDate || null, schedule_only:futureSchedule, schedule_notice:futureSchedule?'Published airline schedule. Live status, gate, inbound aircraft, airport conditions, and weather are added closer to departure.':null, resolved_ident: result.candidate, route_options: routeOptions, diagnostics, delay_index: delayIndex, inbound_aircraft: inboundAircraft, flight_position: flightPosition, inbound_position: inboundPosition, refreshed_at: refreshedAt };
+    const payload={ flights: flights.slice(0, 6), requested_date: requestedDate || null, schedule_only:futureSchedule, schedule_notice:futureSchedule?'Published airline schedule. Live status, gate, inbound aircraft, airport conditions, and weather are added closer to departure.':null, resolved_ident: result.candidate, route_options: routeOptions, diagnostics, delay_index: delayIndex, inbound_aircraft: inboundAircraft, aircraft_rotation:aircraftRotation, flight_position: flightPosition, inbound_position: inboundPosition, refreshed_at: refreshedAt };
     payload.delay_reasoning = delayReasoning;
     cacheLookup(cacheKey,payload);
     res.json(payload);

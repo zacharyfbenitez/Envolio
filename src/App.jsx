@@ -3105,6 +3105,7 @@ function FlightDetailV2({
           </div>
         )}
         <NextStepCard flight={f} data={state.data} changes={changes} />
+        {!!state.data.delay_index?.operational_warnings?.length && <section className="operational-warnings" aria-label="Weather and aircraft warnings">{state.data.delay_index.operational_warnings.map((warning,i)=><article key={`${warning.kind}-${i}`}><h3>{warning.airport?`${warning.airport}: `:''}{warning.title}</h3><p>{warning.detail}</p><small>{warning.source}{warning.issued_at?` · Forecast issued ${new Date(warning.issued_at).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'})}`:''}</small>{warning.periods?.length>0&&<details><summary>When this weather is forecast</summary>{warning.periods.map((period,n)=><p key={n}>{new Date(period.from).toLocaleString()} – {new Date(period.to).toLocaleString()}{period.weather_probability!==null?` · ${period.weather_probability}% chance of the weather, not of a flight delay`:''}</p>)}<small>Times use your device’s time zone.</small></details>}</article>)}</section>}
         {state.data.schedule_only && (
           <div className="future-schedule-notice">
             <CalendarDays size={18} />
@@ -3262,6 +3263,7 @@ function FlightDetailV2({
               current={f}
               refreshed={state.data.refreshed_at}
               cached={state.data.cache_fallback?.active}
+              rotation={state.data.aircraft_rotation}
             />
             {!state.data.schedule_only && <details className="traveler-details"><summary>Departure timeline</summary><TurnTimeline flight={f} inbound={inbound} /></details>}
           </>
