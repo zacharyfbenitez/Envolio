@@ -1,18 +1,14 @@
 {
-  "name": "contrail-flight-tracker",
+  "name": "envolio-web",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"vite --host 0.0.0.0\" \"node server.js\"",
-    "build": "vite build && node scripts/build-pwa.mjs",
-    "native:build": "vite build --config vite.native.config.js",
-    "native:sync": "npm run native:build && cap sync",
-    "native:ios": "cap open ios",
-    "native:android": "cap open android",
-    "test:native": "node --test tests/native-preparation.test.mjs",
+    "build": "vite build",
     "icons": "node scripts/generate-app-icons.mjs",
-    "test:pwa": "node --test tests/pwa.e2e.test.mjs",
+    "test:web-launch": "node --test tests/web-security.test.mjs tests/web-launch.e2e.test.mjs",
+    "test:docker-runtime": "node --test tests/docker-runtime.test.mjs",
     "test:search": "node --test tests/flight-search.test.mjs && node --test tests/search-discovery.e2e.test.mjs",
     "start": "node server.js",
     "test:regression": "node --test tests/flight-regression.test.mjs",
@@ -22,9 +18,6 @@
     "test": "npm run test:providers && npm run test:reasoning && npm run test:regression && npm run test:e2e"
   },
   "dependencies": {
-    "@capacitor/android": "8.5.2",
-    "@capacitor/core": "8.5.2",
-    "@capacitor/ios": "8.5.2",
     "@vitejs/plugin-react": "latest",
     "concurrently": "latest",
     "dotenv": "latest",
@@ -36,8 +29,6 @@
     "vite": "latest"
   },
   "devDependencies": {
-    "@capacitor/cli": "8.5.2",
-    "puppeteer-core": "^25.10.0",
-    "typescript": "7.0.2"
+    "puppeteer-core": "^25.10.0"
   }
 }

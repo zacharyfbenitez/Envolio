@@ -1,0 +1,19 @@
+/* Web-only launch corrections; imported after the legacy visual layers. */
+.flight-finder{width:100%;min-width:0}
+.flight-finder .finder-form{width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+.flight-finder .finder-form:focus-within{transform:none}
+.home-page .hero{padding-top:36px;min-height:0}
+.home-page .hero h1{font-size:clamp(30px,4.2vw,58px);line-height:1.08;margin:18px auto}
+.home-page .intro{font-size:18px;line-height:1.6;margin:16px auto;max-width:650px}
+.home-page .flight-finder{margin-top:22px}
+.pwa-layout:has(.finder-form:focus-within) .pwa-dock{visibility:hidden;pointer-events:none}
+html{scroll-padding-bottom:120px}
+.saved-page{max-width:1000px;margin:auto;padding:32px 20px 120px}
+.saved-page h1{font-size:36px;line-height:1.15}.saved-page>p{font-size:16px;color:#d5cfdf;line-height:1.6}
+.saved-page .saved-grid{margin-top:28px}.saved-page .saved-main{min-height:110px}
+.saved-page .saved-ident,.saved-page .saved-main time{font-size:16px}
+.saved-page .remove-save{min-width:44px;min-height:44px}
+.leg-choice small,.leg-choice time,.product-paths em{font-size:13px!important}
+.alert-sheet-head>button{min-width:44px;min-height:44px}
+.lookup-diagnostics button{min-height:44px;font-size:14px}
+@media(max-width:600px){.home-page .hero{padding-top:24px}.home-page .hero h1{font-size:32px}.home-page .intro{font-size:16px}.home-page .hero .eyebrow{font-size:11px}.home-page .hero .finder-form{padding:16px}.home-page .hero .finder-guidance{font-size:14px}.home-page .finder-modes button{flex:1;white-space:normal}.section-heading{flex-wrap:wrap;gap:12px}.section-heading p{font-size:14px}}

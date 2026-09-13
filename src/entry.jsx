@@ -18,4 +18,5 @@ import './chart-polish.css';
 import './readable-fix.css';
 import './stunning.css';
 import './traveler.css';
+import './web-launch.css';
 createRoot(document.getElementById('root')).render(<AppRecovery><App/></AppRecovery>);

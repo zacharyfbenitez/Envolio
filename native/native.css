@@ -1,5 +1,0 @@
-.native-shell{padding-top:env(safe-area-inset-top);padding-bottom:calc(100px + env(safe-area-inset-bottom))}
-.native-preview{padding:12px 18px;background:#30273c;color:#f0e3ff;font:600 14px/1.5 sans-serif;text-align:center}
-.native-dock{position:fixed;z-index:100;bottom:calc(12px + env(safe-area-inset-bottom));left:16px;right:16px;max-width:420px;margin:auto;display:flex;gap:8px;height:auto;padding:10px;border-radius:24px;background:#25252eef;border:1px solid #ffffff30;backdrop-filter:blur(20px)}
-.native-dock button{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;border:0;border-radius:16px;background:#ffffff0c;color:#fff;font:600 15px/1.4 sans-serif}
-.native-dock button:focus-visible{outline:2px solid #d6bfff;outline-offset:2px}

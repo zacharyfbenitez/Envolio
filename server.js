@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import {apiGuard,publicFeedback} from './web-security.js';
 import {validateRouteQuery,scheduleCandidates,originDayWindow} from './route-search.js';
 import { buildDelayReasoning, loadFaaAdvisories } from './delay-reasoning.js';
 import { loadSkylinkContext, skylink, receipt, metarWeather, compareStatus } from './skylink.js';
@@ -12,11 +13,14 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const app = express();
+const proxyHops=Number(process.env.TRUST_PROXY_HOPS||0);
+if(Number.isInteger(proxyHops)&&proxyHops>0&&proxyHops<=3)app.set('trust proxy',proxyHops);
 app.use(express.json({ limit: '32kb' }));
 app.disable('x-powered-by');
-app.use((_req,res,next)=>{res.set({'X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','Permissions-Policy':'geolocation=(), camera=(), microphone=()','Cross-Origin-Opener-Policy':'same-origin'});next()});
+app.use((_req,res,next)=>{res.set({'X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Referrer-Policy':'strict-origin-when-cross-origin','Permissions-Policy':'geolocation=(), camera=(), microphone=()','Cross-Origin-Opener-Policy':'same-origin'});next()});
 const publicBase=(process.env.PUBLIC_BASE||'/p/bUpWZzvZpIOeEaBV-xsmW/5173').replace(/\/$/,'');
 app.use((req,_res,next)=>{if(req.url===publicBase||req.url.startsWith(`${publicBase}/`))req.url=req.url.slice(publicBase.length)||'/';next()});
+app.use('/api',apiGuard());
 const port = process.env.PORT || 8787;
 const root = path.dirname(fileURLToPath(import.meta.url));
 const iconCache = new Map();
@@ -656,12 +660,13 @@ app.get('/api/airline-icon', async (req, res) => {
 });
 
 app.post('/api/telemetry/lookup', (req,res)=>{
-  const type=req.body?.type==='wrong_match'?'wrong_match':'lookup_feedback';
-  recordTelemetry(type,{ident:String(req.body?.ident||''),reason:String(req.body?.reason||type).slice(0,80),route_hint:String(req.body?.route_hint||'').slice(0,40)});
+  const feedback=publicFeedback(req.body);
+  recordTelemetry(feedback.type,feedback);
   res.status(202).json({ recorded:true, privacy:'Only an identifier pattern, reason, relative date, and route hint are retained.' });
 });
 
 app.post('/api/alerts/subscribe', async (req,res)=>{
+  if(process.env.ENABLE_ALERT_SUBSCRIPTIONS!=='true')return res.status(503).json({configured:false,error:'Text and email alerts are not available yet. You can check updates here without sharing your contact details.'});
   const channel=req.body?.channel==='sms'?'sms':'email',contact=String(req.body?.contact||'').trim(),flight=String(req.body?.flight||'').replace(/[^a-z0-9]/gi,'').toUpperCase(),date=String(req.body?.date||''),events=Array.isArray(req.body?.events)?req.body.events.filter(value=>['inbound','gate','boarding','delay','probability','landing','baggage'].includes(value)).slice(0,7):[];
   const valid=channel==='email'?/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact):/^\+[1-9]\d{7,14}$/.test(contact);
   if(!valid||!flight||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(date))return res.status(400).json({error:channel==='sms'?'Enter a valid phone number in international format, such as +14155550123.':'Enter a valid email address.'});
@@ -671,8 +676,13 @@ app.post('/api/alerts/subscribe', async (req,res)=>{
   try{const delivery=await upstreamFetch(process.env.ALERT_DELIVERY_WEBHOOK,{method:'POST',headers:{'content-type':'application/json',...(process.env.ALERT_WEBHOOK_SECRET?{authorization:`Bearer ${process.env.ALERT_WEBHOOK_SECRET}`}:{})},body:JSON.stringify(record)});if(!delivery.ok)return res.status(502).json({error:'The background alert worker did not accept this subscription.'});await fs.mkdir(path.dirname(alertSubscriptionFile),{recursive:true});await fs.appendFile(alertSubscriptionFile,`${JSON.stringify(record)}\n`);return res.status(201).json({subscribed:true,id:record.id,channel,events,provider:channel==='email'?'Resend':'Twilio',monitoring:'Background alert worker accepted the subscription.',privacy:'Your contact is stored only to deliver the selected flight alerts.'})}catch{return res.status(500).json({error:'Envolio could not activate background monitoring.'})}
 });
 
-app.get('/api/telemetry/summary', (_req,res)=>res.json({ aggregates:[...telemetryCounts.entries()].map(([pattern,count])=>({pattern,count})).sort((a,b)=>b.count-a.count), note:'Anonymous persisted aggregate; no user identifiers are collected.' }));
-app.get('/healthz',(_req,res)=>res.json({ok:true,service:'contrail',uptime_seconds:Math.round(process.uptime())}));
+app.get('/api/telemetry/summary', (req,res)=>{
+  if(!process.env.TELEMETRY_ADMIN_TOKEN||req.get('authorization')!==`Bearer ${process.env.TELEMETRY_ADMIN_TOKEN}`)return res.status(404).json({error:'Not found'});
+  return res.json({aggregates:[...telemetryCounts.entries()].map(([pattern,count])=>({pattern,count})).sort((a,b)=>b.count-a.count)});
+});
+app.get('/healthz',(_req,res)=>res.json({ok:true,service:'envolio',uptime_seconds:Math.round(process.uptime())}));
+app.use('/api',(_req,res)=>res.status(404).json({error:'This API endpoint is not available.'}));
+app.use((error,_req,res,next)=>{if(!error)return next();res.status(error.status===413?413:400).json({error:error.status===413?'The request is too large.':'The request could not be read. Please try again.'});});
 
 app.use(express.static(path.join(root, 'dist'),{maxAge:'1h',setHeaders:(res,file)=>{if(/(?:index\.html|sw\.js|manifest\.webmanifest)$/.test(file))res.setHeader('Cache-Control','no-cache')}}));
 app.use((_req, res) => res.sendFile(path.join(root, 'dist', 'index.html')));

@@ -1,3 +1,6 @@
 User-agent: *
 Allow: /
-Sitemap: https://api.chat.dev/p/bUpWZzvZpIOeEaBV-xsmW/5173/sitemap.xml
+Disallow: /api/
+Disallow: /flight/
+Disallow: /dashboard
+Sitemap: https://envolio.travel/sitemap.xml

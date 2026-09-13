@@ -11,7 +11,8 @@ function AirportField({label,value,onChange,id}){
  return <div className="finder-airport"><label htmlFor={id}>{label}</label><input id={id} value={value} onChange={e=>onChange(e.target.value)} placeholder="City or airport code" autoComplete="off" list={`${id}-options`}/><datalist id={`${id}-options`}>{suggestions.map(item=><option key={item.name} value={item.name}/>)}</datalist>{options.length>1&&<div className="airport-clarify"><span>Which airport?</span>{options.map(option=><button type="button" key={option} onClick={()=>onChange(option)}>{option}</button>)}</div>}{value&&options.length===0&&<small>Try a city name or a three-letter airport code.</small>}</div>;
 }
 export default function FlightSearch({go}){
- const [q,setQ]=useState(''),[date,setDate]=useState(localDay),[dateOverride,setDateOverride]=useState(false),[mode,setMode]=useState('flight'),[from,setFrom]=useState(null),[to,setTo]=useState(null),[chosen,setChosen]=useState(''),[airlineFilter,setAirlineFilter]=useState(''),[state,setState]=useState({}),[help,setHelp]=useState(false);
+ const initial=new URLSearchParams(location.search),initialDate=initial.get('date');
+ const [q,setQ]=useState(()=>initial.get('q')||''),[date,setDate]=useState(()=>validDate(initialDate)?initialDate:localDay()),[dateOverride,setDateOverride]=useState(()=>validDate(initialDate)),[mode,setMode]=useState('flight'),[from,setFrom]=useState(()=>initial.get('origin')||null),[to,setTo]=useState(()=>initial.get('destination')||null),[chosen,setChosen]=useState(''),[airlineFilter,setAirlineFilter]=useState(''),[state,setState]=useState({}),[help,setHelp]=useState(false);
  const request=useRef(null),sequence=useRef(0),resultHeading=useRef(null);
  const [recent,setRecent]=useState(()=>readJourneys(RECENT_KEY).slice(0,3));
  useEffect(()=>()=>request.current?.abort(),[]);

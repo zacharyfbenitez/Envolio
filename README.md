@@ -1,44 +1,37 @@
-# Envolio
+# Envolio website
 
-Flight intelligence web app and Capacitor iOS/Android development projects. Native identifier: `app.envolio` (derived from `envolio.app`).
+React/Vite website and Express flight-data API for **https://envolio.travel**. Native projects, app-store tooling and install-app UI are not part of this branch. The API backend is required; do not deploy this as a static-only site.
 
-## Mac / iOS quick start
+## Local development
 
-Requires Node 22+ and Xcode 26+ on compatible macOS. From the cloned project root:
-
-```sh
-npm ci
-npm run native:build
-npx cap sync ios
-npm run test:native
-npm run native:ios
-```
-
-Open `ios/App/App.xcodeproj` (Swift Package Manager; no CocoaPods setup needed). Select the App target, enable automatic signing and choose your paid Apple Developer team. Confirm/register `app.envolio` in that team's developer account before uploading. No team credentials are included.
-
-**The native build is currently a development shell:** remote API connectivity, native icons, offline caching and native push delivery still need implementation before a useful TestFlight beta. See [native readiness and release checklist](docs/NATIVE-APP.md). Build/sync does not deploy the live web app.
-
-## Android
-
-With Android Studio and its SDK installed:
-
-```sh
-npm run native:build
-npx cap sync android
-npm run native:android
-```
-
-## Local web development
-
-Copy `.env.example` to `.env` locally and configure server-side credentials if using live providers. Never place provider keys in VITE variables or native assets.
+Requires Node 22+.
 
 ```sh
 npm ci
+# Optionally copy .env.example to .env and configure provider credentials locally.
 PUBLIC_BASE=/ npm run dev
 ```
 
-Local web UI: port 5173; API: port 8787 by default. The default Vite configuration also supports the existing chat.dev deployment prefix. Use `PUBLIC_BASE=/` for a normal local root URL.
+Website: port 5173. API: port 8787. Provider keys stay on the server; never put them in VITE variables.
 
-## Source hygiene
+## Production / Render
 
-Git excludes credentials, uploaded user files, runtime/provider caches, installed dependencies, generated bundles and signing material. Public UI assets, source, test fixtures, lockfile, native projects and documentation are included. `cap sync` recreates ignored native configuration/assets after cloning. This source snapshot is not a claim of store readiness.
+Use a Docker **Web Service** from this repository's `main` branch. Dockerfile: `./Dockerfile`. Health check: `/healthz`. The container serves the built website and API together on `0.0.0.0:5173` with `PUBLIC_BASE=/`. Keep alert subscriptions disabled until messaging is ready.
+
+See [deployment instructions](DEPLOYMENT.md) and [remaining launch gates](docs/WEB-LAUNCH.md). The text agent is planned, not yet implemented.
+
+## Checks without paid provider requests
+
+```sh
+npm ci
+npm run build
+npm run test:web-launch
+npm run test:search
+npm run test:providers
+npm run test:reasoning
+npm run test:docker-runtime
+```
+
+Browser checks use Chromium (`/usr/bin/chromium` in the development environment). The runtime test builds an isolated production website and verifies the Docker runtime file set starts; it does not execute Docker itself. Live-provider checks in `npm test` can make billable requests.
+
+Generated assets, credentials and runtime data are excluded from Git. Saved flights remain in each user's browser. `public/sw.js` is only a retirement script for the older offline worker; new visitors do not register a service worker.

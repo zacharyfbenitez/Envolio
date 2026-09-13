@@ -1,8 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import express from 'express';
 import {sq12Lookup} from './fixtures/flight-lookups.mjs';
 test('guided search clarifies airline/airports, offers real returned legs and keeps route date explicit',{timeout:120000},async t=>{
+ const app=express(),prefix='/p/bUpWZzvZpIOeEaBV-xsmW/5173';
+ app.use((req,_res,next)=>{if(req.url.startsWith(prefix))req.url=req.url.slice(prefix.length)||'/';next();});
+ app.use('/api',(_req,res)=>res.status(503).json({error:'No live providers in browser tests'}));
+ app.use(express.static('dist'));app.use((_req,res)=>res.sendFile(process.cwd()+'/dist/index.html'));
+ const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
+ t.after(()=>{server.closeAllConnections();server.close();});
+ const base=`http://127.0.0.1:${server.address().port}`;
  const browser=await puppeteer.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox','--renderer-process-limit=2']});t.after(()=>browser.close());
  const page=await browser.newPage(),errors=[];let lookupCalls=0,routeQuery='';
  await page.setBypassServiceWorker(true);await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);
@@ -15,7 +23,7 @@ test('guided search clarifies airline/airports, offers real returned legs and ke
   if(u.hostname!=='127.0.0.1')return r.abort();
   return r.continue();
  });
- const home=async()=>{await page.goto('http://127.0.0.1:5173/',{waitUntil:'domcontentloaded'});await page.waitForSelector('#flight-query');};
+ const home=async()=>{await page.goto(base,{waitUntil:'domcontentloaded'});await page.waitForSelector('#flight-query');};
  const type=async q=>{await page.$eval('#flight-query',el=>el.focus());await page.keyboard.down('Control');await page.keyboard.press('A');await page.keyboard.up('Control');await page.type('#flight-query',q);};
  await home();await type('100');assert.match(await page.$eval('.finder-followup',e=>e.textContent),/Which airline/);
  await page.type('#finder-airline','American');await page.click('.finder-followup button');assert.match(await page.$eval('.finder-understood',e=>e.textContent),/AA100/);

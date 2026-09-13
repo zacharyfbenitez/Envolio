@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
-import PwaShell from './PwaShell.jsx';
+import React, { useEffect, useState, useRef } from "react";
+import WebShell from './WebShell.jsx';
 import FlightSearch from './FlightSearch.jsx';
 import {searchKey,takeSearchResult} from './flight-search.js';
-import {rememberFlight,readJourneys,SAVED_KEY} from './journeys.js';
+import {rememberFlight,readJourneys,SAVED_KEY,journeyUrl} from './journeys.js';
 import { travelAdvice } from './travel-advice.js';
 import TravelIntelligence from './TravelIntelligence.jsx';
 import {AirportExplorer} from './TripStrategy.jsx';
@@ -767,7 +767,7 @@ function Home({ go, saved, remove }) {
     </>
   );
 }
-function ExplorePage({ route, go, saved }) {
+function ExplorePage({ route, go, saved, remove }) {
   const isRoute = route.page === "route-landing",
     title = isRoute
       ? `${route.origin} to ${route.destination} flight tracker`
@@ -779,15 +779,22 @@ function ExplorePage({ route, go, saved }) {
     return (
       <>
         <Header go={go} />
-        <main className="explore-page">
-          <span>FREQUENT-FLYER DASHBOARD · AVAILABLE NOW</span>
-          <h1>Your journeys, one view.</h1>
+        <main className="explore-page saved-page saved-section">
+          <h1>Saved flights</h1>
           <p>
             {saved.length
               ? `${saved.length} favorite flight${saved.length === 1 ? "" : "s"} saved in this browser.`
-              : "Favorite flights appear here after you save them."}
+              : "No saved flights yet. Find a flight and tap Favorite to keep it here."}
           </p>
-          <ProductPaths go={go} />
+          <div className="saved-grid">{saved.map(item=><article className="saved-card" key={item.key}>
+            <button className="saved-main" onClick={()=>go(journeyUrl(item,base))}>
+              <span className="saved-ident">{item.ident}</span>
+              <span>{code(item.origin)} → {code(item.destination)}</span><time>{dateLabel(item.date)}</time>
+            </button>
+            <button className="remove-save" aria-label={`Remove ${item.ident}`} onClick={()=>remove(item.key)}><X size={18}/></button>
+          </article>)}</div>
+          <button className="primary" onClick={()=>go(base)}>Find a flight</button>
+          <p>Saved on this device. Open a flight to check for the latest updates.</p>
         </main>
         <Footer go={go} />
       </>
@@ -865,6 +872,8 @@ function Loading({ ident, date }) {
   );
 }
 function Failure({ message, retry, go, diagnostics }) {
+  const current=new URLSearchParams(location.search),ident=location.pathname.split('/flight/')[1]?.split('/')[0]||'';
+  const editQuery=new URLSearchParams({q:decodeURIComponent(ident),date:current.get('date')||today,origin:current.get('origin')||'',destination:current.get('destination')||''});
   return (
     <main className="detail-shell">
       <div className="error-panel" role="alert">
@@ -872,15 +881,14 @@ function Failure({ message, retry, go, diagnostics }) {
         <h1>We couldn’t load this flight.</h1>
         <p>{message}</p>
         <aside>
-          No flight status or delay probability was estimated. Check the
-          departure-local date, add an origin airport, or try the operating
-          airline’s flight number.
+          We haven’t guessed your flight status. Try again, or check the flight number,
+          departure airport and date shown on your booking.
         </aside>
         <div>
           <button className="primary" onClick={retry}>
             <RefreshCw size={16} /> Try again
           </button>
-          <button className="secondary" onClick={() => go(base)}>
+          <button className="secondary" onClick={() => go(`${base}?${editQuery}`)}>
             Edit search
           </button>
         </div>
@@ -1594,6 +1602,21 @@ function DeliverySignup({ flightKey, prefs }) {
   );
 }
 function AlertSettings({ open, onClose, flightKey, flightLabel }) {
+  const sheet=useRef(null),closeAction=useRef(onClose);
+  closeAction.current=onClose;
+  useEffect(()=>{
+    if(!open)return;
+    const previous=document.activeElement,overflow=document.body.style.overflow;
+    document.body.style.overflow='hidden';
+    const focusables=()=>[...sheet.current.querySelectorAll('button,input,a[href],[tabindex="0"]')].filter(e=>!e.disabled&&e.getClientRects().length);
+    focusables()[0]?.focus();
+    const keyboard=e=>{
+      if(e.key==='Escape'){e.preventDefault();closeAction.current();}
+      if(e.key==='Tab'){const items=focusables(),first=items[0],last=items.at(-1);if(e.shiftKey&&(document.activeElement===first||!sheet.current.contains(document.activeElement))){e.preventDefault();last?.focus();}else if(!e.shiftKey&&(document.activeElement===last||!sheet.current.contains(document.activeElement))){e.preventDefault();first?.focus();}}
+    };
+    document.addEventListener('keydown',keyboard);
+    return()=>{document.removeEventListener('keydown',keyboard);document.body.style.overflow=overflow;previous?.focus();};
+  },[open]);
   const key = `contrail.alerts.${flightKey}`,
     [prefs, setPrefs] = useState(() => {
       try {
@@ -1626,7 +1649,7 @@ function AlertSettings({ open, onClose, flightKey, flightLabel }) {
         : Notification.permission,
     );
   useEffect(() => {
-    localStorage.setItem(key, JSON.stringify(prefs));
+    try{localStorage.setItem(key, JSON.stringify(prefs));}catch{/* Preferences remain usable for this visit. */}
   }, [key, prefs]);
   if (!open) return null;
   const request = async () => {
@@ -1642,6 +1665,7 @@ function AlertSettings({ open, onClose, flightKey, flightLabel }) {
       }}
     >
       <section
+        ref={sheet}
         className="alert-sheet"
         role="dialog"
         aria-modal="true"
@@ -1697,7 +1721,7 @@ function AlertSettings({ open, onClose, flightKey, flightLabel }) {
         <div className="alert-sheet-foot">
           <p>Your watch settings are saved privately in this browser.</p>
           <button className="primary" onClick={onClose}>
-            Save watch settings
+            Done
           </button>
         </div>
       </section>
@@ -3322,8 +3346,8 @@ function FlightDetailV2({
 export default function App() {
   const [route, go] = useRoute(),
     s = useSaved();
-  return <PwaShell go={go}>{s.storageError&&<div className="storage-warning" role="status">This browser couldn’t save your changes. Favorites are available for this visit only.</div>}{route.page === 'flight'
+  return <WebShell go={go}>{s.storageError&&<div className="storage-warning" role="status">This browser couldn’t save your changes. Favorites are available for this visit only.</div>}{route.page === 'flight'
     ? <FlightDetailV2 key={[route.ident,route.date,route.origin,route.destination,route.departure].join('|')} {...route} go={go} saved={s.saved} toggle={s.toggle}/>
-    : route.page !== 'home' ? <ExplorePage route={route} go={go} saved={s.saved}/>
-    : <Home go={go} saved={s.saved} remove={s.remove}/>}</PwaShell>;
+    : route.page !== 'home' ? <ExplorePage route={route} go={go} saved={s.saved} remove={s.remove}/>
+    : <Home go={go} saved={s.saved} remove={s.remove}/>}</WebShell>;
 }
