@@ -1,3 +1,4 @@
+import {isCancelled,isDiverted,reportedStatus,positionReadout} from './flight-state.js';
 import React, { useEffect, useState, useRef } from "react";
 import {travelerAirport,arrivalDay} from './flight-summary.js';
 import {travelerAlert} from '../alert-delivery.js';
@@ -1225,6 +1226,7 @@ function TurnTimeline({ flight, inbound }) {
   );
 }
 function LiveOperations({ flight, position, refreshed }) {
+  const metrics=positionReadout(position),diverted=isDiverted(flight);
   const phase = flightPhase(flight),
     arrival = flight.actual_in || flight.estimated_in || flight.scheduled_in;
   return (
@@ -1235,7 +1237,7 @@ function LiveOperations({ flight, position, refreshed }) {
             {phase === "landed" ? "Arrival details" : "Live operations"}
           </span>
           <h3>
-            {phase === "landed"
+            {diverted ? "Flight diverted · confirm arrival airport" : phase === "landed"
               ? `Arrived at ${code(flight.destination)}`
               : `En route to ${code(flight.destination)}`}
           </h3>
@@ -1248,28 +1250,24 @@ function LiveOperations({ flight, position, refreshed }) {
             <div>
               <span>Position</span>
               <b>
-                {position
-                  ? `${position.latitude.toFixed(2)}°, ${position.longitude.toFixed(2)}°`
-                  : "Position unavailable"}
+                {metrics.position}
               </b>
             </div>
             <div>
               <span>Altitude</span>
               <b>
-                {position
-                  ? `${Number(position.altitude * 100).toLocaleString()} ft`
-                  : "Not reported"}
+                {metrics.altitude}
               </b>
             </div>
             <div>
               <span>Ground speed</span>
-              <b>{position ? `${position.groundspeed} kt` : "Not reported"}</b>
+              <b>{metrics.speed}</b>
             </div>
           </>
         )}
         <div>
           <span>{phase === "landed" ? "Arrived" : "Estimated arrival"}</span>
-          <b>{clock(arrival, flight.destination?.timezone)}</b>
+          <b>{diverted&&!flight.actual_in?"Confirm with airline":clock(arrival, flight.destination?.timezone)}</b>
         </div>
         {phase === "landed" && (
           <>
@@ -2162,7 +2160,7 @@ function TravelerOutlook({ data, future }) {
 }
 function NextStepCard({ flight, data, changes }) {
   const [title, detail] = travelAdvice(flight, { future: data.schedule_only, cached: data.cache_fallback?.active, changes, inbound: data.inbound_aircraft });
-  return <section className="next-step-card" aria-labelledby="next-step-title"><span className="next-step-icon"><ArrowRight size={22}/></span><div><span className="traveler-kicker">What should I do?</span><h2 id="next-step-title">{title}</h2>{flightPhase(flight)==='upcoming'&&!flight.cancelled&&<p>Keep your airline’s check-in and boarding deadlines.</p>}<details><summary>Advice &amp; details</summary><p>{detail}</p></details></div></section>;
+  return <section className="next-step-card" aria-labelledby="next-step-title"><span className="next-step-icon"><ArrowRight size={22}/></span><div><span className="traveler-kicker">What should I do?</span><h2 id="next-step-title">{title}</h2>{flightPhase(flight)==='upcoming'&&!isCancelled(flight)&&!isDiverted(flight)&&<p>Keep your airline’s check-in and boarding deadlines.</p>}<details><summary>Advice &amp; details</summary><p>{detail}</p></details></div></section>;
 }
 function ProbabilityIndex({ index, phase }) {
   if (!index)
@@ -2900,6 +2898,8 @@ function FlightDetailV2({
     );
   const f = state.data.flights[0],
     phase = flightPhase(f),
+    cancelled = isCancelled(f),
+    diverted = isDiverted(f),
     inbound = state.data.inbound_aircraft;
   const out = f.actual_out || f.estimated_out || f.scheduled_out,
     arrival = f.actual_in || f.estimated_in || f.scheduled_in;
@@ -2920,7 +2920,7 @@ function FlightDetailV2({
     phase === "upcoming"
       ? inboundSignal(inbound, f)
       : {
-          label: f.status || "Status not reported",
+          label: reportedStatus(f),
           tone: /delay|cancel|divert/i.test(f.status || "")
             ? "negative"
             : "positive",
@@ -2976,7 +2976,7 @@ function FlightDetailV2({
             </span>
           </div>
         )}
-        <section className="flight-summary" data-phase={phase} aria-label="Flight summary">
+        <section className="flight-summary" data-phase={phase} data-disrupted={cancelled||diverted} aria-label="Flight summary">
         <section className="flight-title">
           <div className="carrier-identity">
             <CarrierLogo flight={f} />
@@ -2988,7 +2988,7 @@ function FlightDetailV2({
                   : ""}
               </span>
               <h1>{state.data.diagnostics?.match_type === "codeshare" ? ident : f.ident_iata || f.ident}</h1>
-              <div className="reported-status"><small>Reported status · FlightAware</small><strong>{state.data.cache_fallback?.active?'Saved update':f.status||'Status not reported'}</strong></div>
+              <div className={`reported-status ${cancelled||diverted?"disrupted":""}`}><small>Reported status · FlightAware</small><strong>{state.data.cache_fallback?.active?'Saved update':reportedStatus(f)}</strong></div>
             </div>
           </div>
           <div className="title-actions">
@@ -3020,23 +3020,23 @@ function FlightDetailV2({
           </div>
           <div className="route-main">
             <div>
-              <span className="reported-label">Reported departure</span>
+              <span className="reported-label">{cancelled?"Original departure":"Reported departure"}</span>
               <strong>{code(f.origin)}</strong>
               <div className="airport-location">
                 <span>{city(f.origin)}</span>
                 <CountryMarker airport={f.origin} />
               </div>
-              <time>{clock(out, f.origin?.timezone)}</time>
-              <span className="arrival-day">{arrivalDay(out,out,f.origin?.timezone,f.origin?.timezone)}</span>
-              <FreshnessBadge
+              <time>{clock(cancelled?f.scheduled_out:out, f.origin?.timezone)}</time>
+              <span className="arrival-day">{arrivalDay(cancelled?f.scheduled_out:out,cancelled?f.scheduled_out:out,f.origin?.timezone,f.origin?.timezone)}</span>
+              {!cancelled&&<FreshnessBadge
                 actual={f.actual_out}
                 estimated={f.estimated_out}
                 scheduled={f.scheduled_out}
                 latest={state.data.refreshed_at}
                 active={!f.actual_out}
                 cached={state.data.cache_fallback?.active}
-              />
-              {out!==f.scheduled_out&&<small>Scheduled {clock(f.scheduled_out, f.origin?.timezone)}</small>}
+              />}
+              {!cancelled&&out!==f.scheduled_out&&<small>Scheduled {clock(f.scheduled_out, f.origin?.timezone)}</small>}
             </div>
             <div className="route-track">
               <div>
@@ -3051,15 +3051,15 @@ function FlightDetailV2({
               </span>
             </div>
             <div className="destination">
-              <span className="reported-label">Reported arrival</span>
+              <span className="reported-label">{cancelled?"Original arrival":diverted?"Listed destination · verify":"Reported arrival"}</span>
               <strong>{code(f.destination)}</strong>
               <div className="airport-location">
                 <span>{city(f.destination)}</span>
                 <CountryMarker airport={f.destination} />
               </div>
-              <time>{clock(arrival, f.destination?.timezone)}</time>
-              <span className="arrival-day">{arrivalDay(out,arrival,f.origin?.timezone,f.destination?.timezone)}</span>
-              <FreshnessBadge
+              <time className={diverted?"arrival-unconfirmed":undefined}>{diverted?"Confirm arrival":clock(cancelled?f.scheduled_in:arrival, f.destination?.timezone)}</time>
+              {!diverted&&<span className="arrival-day">{arrivalDay(cancelled?f.scheduled_out:out,cancelled?f.scheduled_in:arrival,f.origin?.timezone,f.destination?.timezone)}</span>}
+              {!cancelled&&!diverted&&<FreshnessBadge
                 actual={f.actual_in}
                 estimated={f.estimated_in}
                 scheduled={f.scheduled_in}
@@ -3067,12 +3067,12 @@ function FlightDetailV2({
                 active={!f.actual_in}
                 event="arrival"
                 cached={state.data.cache_fallback?.active}
-              />
-              {arrival!==f.scheduled_in&&<small>Scheduled {clock(f.scheduled_in, f.destination?.timezone)}</small>}
+              />}
+              {!cancelled&&!diverted&&arrival!==f.scheduled_in&&<small>Scheduled {clock(f.scheduled_in, f.destination?.timezone)}</small>}
             </div>
           </div>
-          {phase === 'upcoming' && !f.cancelled && !/cancel/i.test(f.status||'') && <TravelerOutlook data={state.data} future={state.data.schedule_only} />}
-          {phase === 'upcoming' && !state.data.schedule_only && <section className="summary-assignments phase-upcoming">
+          {phase === 'upcoming' && !cancelled && !diverted && <TravelerOutlook data={state.data} future={state.data.schedule_only} />}
+          {phase === 'upcoming' && !cancelled && !diverted && !state.data.schedule_only && <section className="summary-assignments phase-upcoming">
               {upcomingDetails.slice(0, 2).map(([label, value]) => (
                 <ChangeAwareValue
                   key={label}
@@ -3085,17 +3085,17 @@ function FlightDetailV2({
             </section>}
         </section>
         </section>
-        {phase === 'upcoming' && <InboundSummary flight={inbound} position={state.data.inbound_position} current={f} refreshed={state.data.refreshed_at} cached={state.data.cache_fallback?.active} rotation={state.data.aircraft_rotation}/>}
+        {phase === 'upcoming' && !cancelled && !diverted && <InboundSummary flight={inbound} position={state.data.inbound_position} current={f} refreshed={state.data.refreshed_at} cached={state.data.cache_fallback?.active} rotation={state.data.aircraft_rotation}/>}
         <div className="result-brief">
           <NextStepCard flight={f} data={state.data} changes={changes} />
 
         </div>
-        {!f.actual_off && !f.actual_in && !f.cancelled && <TakeoffSlot slot={state.data.takeoff_slot} airport={f.origin} scheduled={f.scheduled_out} cached={state.data.cache_fallback?.active}/>}
+        {!f.actual_off && !f.actual_in && !cancelled && !diverted && <TakeoffSlot slot={state.data.takeoff_slot} airport={f.origin} scheduled={f.scheduled_out} cached={state.data.cache_fallback?.active}/>}
         {phase === 'upcoming' && !!state.data.delay_index?.operational_warnings?.length && <details className="operational-warnings" aria-label="Weather and aircraft warnings"><summary>What to watch · {state.data.delay_index.operational_warnings.length} {state.data.delay_index.operational_warnings.length===1?'update':'updates'}</summary><p>These signals can affect your flight. They are not all confirmed causes of a delay.</p>{state.data.delay_index.operational_warnings.map((warning,i)=><details key={`${warning.kind}-${i}`}><summary>{warning.airport?`${warning.airport}: `:''}{warning.title}</summary><p>{warning.detail}</p><small>{warning.source}{warning.issued_at?` · Forecast issued ${new Date(warning.issued_at).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'})}`:''}</small>{warning.periods?.length>0&&<div><p>Forecast periods · your device’s time zone</p>{warning.periods.map((period,n)=><p key={n}>{new Date(period.from).toLocaleString()} – {new Date(period.to).toLocaleString()}{period.weather_probability!=null?` · ${period.weather_probability}% chance of the weather, not of a flight delay`:''}</p>)}</div>}</details>)}</details>}
         {phase === "upcoming" ? (
           <>
 
-            {!state.data.schedule_only && <details className="traveler-details"><summary>Departure timeline</summary><TurnTimeline flight={f} inbound={inbound} /></details>}
+            {!cancelled&&!diverted&&!state.data.schedule_only && <details className="traveler-details"><summary>Departure timeline</summary><TurnTimeline flight={f} inbound={inbound} /></details>}
           </>
         ) : (
           <LiveOperations
@@ -3104,7 +3104,7 @@ function FlightDetailV2({
             refreshed={state.data.refreshed_at}
           />
         )}
-        {!f.cancelled&&!state.data.cache_fallback?.active&&<ConnectionProtection url={`${base}api/flights/${encodeURIComponent(ident)}`} query={new URLSearchParams({date,origin:code(f.origin),destination:code(f.destination),...(departure?{departure}:{})}).toString()} date={date} airport={code(f.destination)} onChecked={setConnectionCheck}/>}
+        {!cancelled&&!diverted&&!state.data.cache_fallback?.active&&<ConnectionProtection url={`${base}api/flights/${encodeURIComponent(ident)}`} query={new URLSearchParams({date,origin:code(f.origin),destination:code(f.destination),...(departure?{departure}:{})}).toString()} date={date} airport={code(f.destination)} onChecked={setConnectionCheck}/>}
         <details className="traveler-details weather-overview"><summary>Weather &amp; airport updates</summary><TravelIntelligence ident={ident} date={date} origin={origin} destination={destination} departure={departure} refreshed={state.data.refreshed_at} cached={state.data.cache_fallback?.active} onRefresh={refresh} hideConnection externalConnection={connectionCheck} flightDeparture={f.estimated_out||f.scheduled_out} flightArrival={f.estimated_in||f.scheduled_in}/></details>
         <details className="traveler-details flight-analysis"><summary><span>Flight history &amp; explanation</span><small>Charts, contributing factors, and sources</small></summary>
           {phase === 'upcoming' && <RiskContext index={state.data.delay_index} cached={state.data.cache_fallback?.active}/>}

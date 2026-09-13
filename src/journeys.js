@@ -10,6 +10,7 @@ export function airportCode(airport){
 }
 export function journeyUrl(item,base){
  const query=new URLSearchParams({date:item.date});
+ if(Number.isFinite(Date.parse(item.snapshot?.scheduled_out)))query.set('departure',item.snapshot.scheduled_out);
  if(airportCode(item.origin))query.set('origin',airportCode(item.origin));
  if(airportCode(item.destination))query.set('destination',airportCode(item.destination));
  return `${base}flight/${encodeURIComponent(item.ident)}?${query}`;

@@ -12,7 +12,7 @@ export function UpdateStrip({flight,refreshed,cached}){
  const key=`envolio.last-check.${flight.fa_flight_id||[flight.ident,flight.scheduled_out,flight.origin?.code_iata,flight.destination?.code_iata].join('.')}`;
  const [items,setItems]=useState([]),seen=useRef('');
  useEffect(()=>{if(cached||seen.current===`${key}|${refreshed}`)return;seen.current=`${key}|${refreshed}`;try{const before=JSON.parse(localStorage.getItem(key)||'null');setItems(flightChanges(before,flight));localStorage.setItem(key,JSON.stringify(journeySnapshot(flight,refreshed)));}catch{setItems([]);}},[key,refreshed,cached,flight]);
- return !cached&&items.length>0?<section className="update-strip" role="status"><strong>Since your last check</strong><ul>{items.map(item=><li key={item}>{item}</li>)}</ul><p>Gate changed? Check airport screens before heading over.</p></section>:null;
+ return !cached&&items.length>0?<section className="update-strip" role="status"><strong>Since your last check</strong><ul>{items.map(item=><li key={item}>{item}</li>)}</ul>{items.some(item=>/^(Gate|Terminal) /.test(item))&&<p>Check airport screens before heading to the new gate.</p>}</section>:null;
 }
 export function WeatherWindow({airport,target}){
  const at=Date.parse(target);

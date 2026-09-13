@@ -1,8 +1,9 @@
+import {isCancelled,isDiverted} from './flight-state.js';
 export function travelAdvice(flight, { future = false, cached = false, changes = [], inbound = null } = {}, now = Date.now()) {
   const status = String(flight.status || '');
   if (cached) return ['Check the airline for the latest update', 'These results are saved. Confirm your flight time and gate before making plans.'];
-  if (/cancel/i.test(status)) return ['Check your rebooking options', 'Open the airline’s app or speak to its service desk before travelling to the airport.'];
-  if (/divert/i.test(status)) return ['Confirm your new arrival airport', 'Follow the airline’s instructions before arranging onward travel.'];
+  if (isCancelled(flight)) return ['Check your rebooking options', 'Open the airline’s app or speak to its service desk before travelling to the airport.'];
+  if (isDiverted(flight)) return ['Confirm your new arrival airport', 'Follow the airline’s instructions before arranging onward travel.'];
   if (flight.actual_in) return [flight.baggage_claim ? `Head to baggage claim ${flight.baggage_claim}` : 'Check your onward journey', flight.baggage_claim ? 'Confirm the carousel on airport screens. Connecting? Check your next gate instead.' : 'Check airport screens for your next gate or baggage carousel.'];
   if (flight.actual_out) return ['Plan for your arrival', 'Check the arrival estimate below and your next gate if you have a connection.'];
   if (future) return ['Save your flight and check back before you travel', 'Your schedule is published. Gate and aircraft details will appear closer to departure.'];
