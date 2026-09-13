@@ -66,3 +66,17 @@
 .detail-shell .plane-now{min-height:0;margin:24px 0}
 .detail-shell .plane-now p{font-size:16px;line-height:1.6}
 @media(max-width:650px){.detail-shell{width:calc(100% - 28px);padding-top:16px}.everyday-outlook,.detail-shell .airport-outlooks{grid-template-columns:1fr}.everyday-outlook article,.detail-shell .travel-intelligence,.detail-shell .next-step-card{padding:20px}.detail-shell .title-actions{width:100%}.detail-shell .title-actions button{flex:1;min-width:120px;min-height:44px}.detail-shell .detail-toolbar{flex-wrap:wrap;gap:10px}.detail-shell .travel-intelligence header{gap:12px}.detail-shell .airport-outlooks>article{padding:16px}}
+.risk-context{display:grid;gap:12px;margin:16px 0;font-size:16px;line-height:1.55;min-width:0}
+.risk-context>details,.risk-signal-note{padding:20px;border:1px solid #ffffff26;border-radius:20px;background:#ffffff06;min-width:0}
+.risk-context summary{cursor:pointer;font-size:17px;font-weight:750;color:#f5f7fc}
+.risk-context p{color:#cbd2de;margin:10px 0;overflow-wrap:anywhere}
+.risk-signal-note{background:#f5b64212;border-color:#f5b64266}.risk-signal-note strong{color:#ffd689}
+.airport-signal-grid,.risk-audit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}
+.risk-context article{padding:16px;border-radius:16px;background:#ffffff06;min-width:0}.risk-context h4{font-size:18px;margin:0 0 12px}
+.airport-signal{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid #ffffff18}.airport-signal p{flex-basis:100%}
+.airport-signal .reported{color:#ffc16c}.airport-signal .not_reported{color:#8cdeb4}.airport-signal .unavailable{color:#cad0da}
+.risk-context small,.aircraft-chain small{font-size:14px;line-height:1.5;color:#c3cbd8}.evidence-label{display:inline-block;border-radius:20px;padding:5px 10px;background:#86b6ff1a;color:#bbd6ff;font-size:14px}
+.risk-context pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:260px;overflow:auto;font-size:14px;color:#d5dcea}
+.route-history-bars{display:grid;gap:20px}.history-track{height:12px;background:#84d9ad33;border-radius:8px;overflow:hidden;margin:8px 0}.history-track span{display:block;height:100%;background:#f1af69}
+.aircraft-chain{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;list-style:none;padding:0;margin:20px 0}.aircraft-chain li{display:flex;flex-direction:column;gap:8px;min-width:0;border:1px solid #ffffff26;border-top:3px solid #91a7cc;padding:16px;border-radius:16px;overflow-wrap:anywhere}.aircraft-chain li.arrived{border-top-color:#7cddb0}.aircraft-chain li.disrupted{border-top-color:#ff8c8c}.aircraft-chain .your-flight{background:#91baff12}.aircraft-chain strong{font-size:18px}
+@media(max-width:600px){.airport-signal-grid,.risk-audit-grid{grid-template-columns:1fr}.risk-context>details,.risk-signal-note{padding:16px}.aircraft-chain{grid-template-columns:1fr}.aircraft-chain li{border-top-width:1px;border-left:3px solid #91a7cc}}

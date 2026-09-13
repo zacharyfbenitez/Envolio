@@ -7,6 +7,7 @@ import { travelAdvice } from './travel-advice.js';
 import TravelIntelligence from './TravelIntelligence.jsx';
 import {travelerChance} from './traveler-presentation.js';
 import InboundSummary from './InboundSummary.jsx';
+import RiskContext from './RiskContext.jsx';
 import {AirportExplorer} from './TripStrategy.jsx';
 import {
   ArrowRight,
@@ -3245,6 +3246,7 @@ function FlightDetailV2({
           </div>
         </section>
         {phase === 'upcoming' && !f.cancelled && !/cancel/i.test(f.status||'') && <TravelerOutlook data={state.data} future={state.data.schedule_only} />}
+        {phase === 'upcoming' && <RiskContext index={state.data.delay_index} cached={state.data.cache_fallback?.active}/>}
         {phase === "upcoming" ? (
           <>
             {!state.data.schedule_only && <section className="detail-grid phase-upcoming">

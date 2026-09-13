@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import express from 'express';
 import puppeteer from 'puppeteer-core';
 import {sq12Lookup} from './fixtures/flight-lookups.mjs';
+import {scoreAudit,airportIndicators,historicalTrend} from '../risk-audit.js';
 test('site-wide layout and traveler results states',{timeout:120000},async t=>{
  const app=express(),prefix='/p/bUpWZzvZpIOeEaBV-xsmW/5173';
  app.use((req,_res,next)=>{if(req.url.startsWith(prefix))req.url=req.url.slice(prefix.length)||'/';next();});
@@ -13,6 +14,10 @@ test('site-wide layout and traveler results states',{timeout:120000},async t=>{
   payload.delay_index={score:32,on_time_probability:68,coverage_percent:48,factors:[{key:'route',label:'Route history',value:25,weight:.28,source:'Fixture history',detail:'Recent flights'},{key:'inbound',label:'Incoming aircraft',value:75,weight:.2,source:'Fixture rotation',detail:'Incoming plane running late'}],live_series:[{at:'2026-09-13T12:00:00Z',delay:32}],methodology:'Test fixture—not live data'};
   payload.inbound_aircraft={...f,ident:'SIA11',ident_iata:'SQ11',origin:f.destination,destination:f.origin,scheduled_in:'2026-09-15T18:00:00Z',estimated_in:'2026-09-15T19:30:00Z',actual_off:'2026-09-15T12:00:00Z',actual_in:null};
   if(req.params.ident==='SQ12')payload.delay_index.operational_warnings=[{kind:'earlier_weather',airport:'NRT',title:'Earlier weather may affect incoming flights',detail:'Earlier storms may affect your aircraft. Carry-over is not confirmed.',source:'Fixture TAF'}];
+  payload.delay_index.audit=scoreAudit(payload.delay_index);
+  payload.delay_index.airport_indicators=airportIndicators(f,null,null,null);
+  payload.delay_index.historical_trend=historicalTrend([]);
+  payload.aircraft_rotation={legs:[payload.inbound_aircraft],warnings:['Earlier aircraft assignment unavailable']};
   if(req.params.ident==='AIR1'){f.actual_out='2026-09-15T19:10:00Z';f.actual_off='2026-09-15T19:20:00Z';f.status='En Route';}
   if(req.params.ident==='LAND1'){f.actual_out='2026-09-15T19:10:00Z';f.actual_in='2026-09-16T05:50:00Z';f.status='Arrived';f.baggage_claim='7';}
   if(req.params.ident==='CANCEL1'){f.cancelled=true;f.status='Cancelled';}
@@ -39,6 +44,10 @@ test('site-wide layout and traveler results states',{timeout:120000},async t=>{
     assert.deepEqual(await page.$$eval('.chance-explainer dt',es=>es.map(e=>e.textContent)),['Why','Reliability','Updated']);
     assert.match(await page.$eval('.inbound-summary',e=>e.textContent),/20 minutes after/);
     assert.equal(await page.$('.inbound-summary .mini-map'),null);
+    await page.$$eval('.risk-context details',es=>es.forEach(e=>e.open=true));
+    assert.match(await page.$eval('.risk-audit',e=>e.textContent),/Live aircraft/);
+    assert.ok(await page.$('.aircraft-chain'));
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`Expanded risk audit overflow at ${width}`);
     await page.$eval('.projected-delay',e=>e.scrollIntoView());
     await page.screenshot({path:`/tmp/envolio-projected-${width}.png`});
    }

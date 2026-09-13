@@ -10,7 +10,7 @@
     "test:web-launch": "node --test tests/web-security.test.mjs tests/web-launch.e2e.test.mjs",
     "test:docker-runtime": "node --test tests/docker-runtime.test.mjs",
     "test:audit": "node --test tests/traveler-presentation.test.mjs tests/site-audit.e2e.test.mjs",
-    "test:operational-risk": "node --test tests/operational-risk.test.mjs",
+    "test:operational-risk": "node --test tests/operational-risk.test.mjs tests/risk-audit.test.mjs",
     "test:search": "node --test tests/flight-search.test.mjs && node --test tests/search-discovery.e2e.test.mjs",
     "start": "node server.js",
     "test:regression": "node --test tests/flight-regression.test.mjs",
