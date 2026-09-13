@@ -9,7 +9,8 @@ export function monitor(kind,value){
  events.push({kind,value:kind==='score'?{score:value.score}:value,at:Date.now()});while(events.length>500||events[0]?.at<Date.now()-3600000)events.shift();
  if(kind==='score'){
   const rows=value.factors||[],usable=rows.filter(f=>Number.isFinite(f.value)),weight=usable.reduce((s,f)=>s+f.weight,0),expected=usable.reduce((s,f)=>s+f.value*f.weight,0)/weight;
-  if(!Number.isFinite(value.score)||value.score<0||value.score>100||Math.abs(expected-value.score)>1||new Set(rows.map(f=>f.key)).size!==rows.length)alert('scoring_regression','Score range, factor uniqueness or weighted-score invariant failed.');
+  const adjusted=Math.max(expected,value.slot_adjustment?.risk_floor||0);
+  if(!Number.isFinite(value.score)||value.score<0||value.score>100||Math.abs(adjusted-value.score)>1||new Set(rows.map(f=>f.key)).size!==rows.length)alert('scoring_regression','Score range, factor uniqueness or weighted-score/slot-floor invariant failed.');
   const scores=events.filter(e=>e.kind==='score').map(e=>e.value.score);
   if(scores.length>=30&&(scores.filter(s=>s<=5).length/scores.length>.9||scores.filter(s=>s>=95).length/scores.length>.9))alert('risk_distribution','Over 90% of at least 30 estimates are at an extreme. Investigate source coverage; this is not proof of model failure.');
  }

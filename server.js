@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import {applySlotRisk} from './slot-risk.js';
 import {loadTakeoffSlot} from './takeoff-slots.js';
 import {RISK_RELEASE,scoreAudit,airportIndicators,historicalTrend} from './risk-audit.js';
 import {monitor,monitoringSummary} from './risk-monitor.js';
@@ -126,13 +127,14 @@ hydrateIndexSnapshots();
 async function recordIndexSnapshot(key,index){
   if(!index)return[];
   const list=indexSnapshots.get(key)||[],last=list.at(-1),factorValues=Object.fromEntries(index.factors.map(factor=>[factor.key,factor.value]));
-  const point={at:new Date().toISOString(),delay:index.score,on_time:index.on_time_probability,factors:factorValues};
+  const point={at:new Date().toISOString(),delay:index.score,on_time:index.on_time_probability,factors:factorValues,slot_adjustment:index.slot_adjustment||null};
   const previousWithFactors=[...list].reverse().find(item=>item.factors);
   index.audit=scoreAudit(index,previousWithFactors);
   index.historical_trend=historicalTrend(index.trend_points);
   monitor('score',index);
   const delta=last?point.delay-last.delay:0;
   const drivers=previousWithFactors?index.factors.map(factor=>({key:factor.key,label:factor.label,from:previousWithFactors.factors[factor.key],to:factor.value,source:factor.source})).filter(item=>Number.isFinite(item.from)&&Number.isFinite(item.to)&&item.from!==item.to).map(item=>({...item,change:item.to-item.from})).sort((a,b)=>Math.abs(b.change)-Math.abs(a.change)).slice(0,3):[];
+  if(last&&(last.slot_adjustment?.applied_points||0)!==(index.slot_adjustment?.applied_points||0))drivers.unshift({key:'atc_slot',label:'Assigned ATC takeoff slot',from:last.slot_adjustment?.applied_points||0,to:index.slot_adjustment?.applied_points||0,change:(index.slot_adjustment?.applied_points||0)-(last.slot_adjustment?.applied_points||0),source:'Official slot + heuristic'});
   index.movement={delta,compared_at:last?.at||null,direction:delta>0?'up':delta<0?'down':'flat',drivers,explanation:!last?'First live observation; refresh to establish movement.':delta===0?'The headline risk is unchanged since the previous observation.':`${Math.abs(delta)} point ${delta>0?'increase':'decrease'} since the previous observation${drivers.length?`, led by ${drivers[0].label.toLowerCase()}`:''}.`};
   if(!last||Date.now()-new Date(last.at).getTime()>=60000||last.delay!==point.delay||drivers.length){list.push(point);indexSnapshots.set(key,list.slice(-48));try{await fs.mkdir(path.dirname(indexSnapshotFile),{recursive:true});await fs.appendFile(indexSnapshotFile,`${JSON.stringify({key,point})}\n`)}catch{}}
   return indexSnapshots.get(key)||[point];
@@ -520,7 +522,7 @@ app.get('/api/flights/:ident', async (req, res) => {
       if(delayIndex){const seen=new Set();delayIndex.airline_history=historicalTrend((airline?.arrivals||[]).filter(f=>{const id=f.fa_flight_id||`${f.ident}|${f.scheduled_out}`;if(seen.has(id)||!f.actual_out||Date.parse(f.actual_out)>=Date.now())return false;seen.add(id);return true;}).map(f=>({date:f.scheduled_out,minutes:(Date.parse(f.actual_out)-Date.parse(f.scheduled_out))/60000})));delayIndex.airline_history.scope='Operating airline: completed departures in the returned operations sample only; coverage is limited';}
       for(const [provider,data] of [['FAA',faa],['NOAA departure TAF',originForecast],['NOAA arrival TAF',arrivalForecast]])if(data&&data.status!=='available')monitor('provider_failure',provider);
       if(delayIndex){delayIndex.input_limitations=[...aircraftRotation.warnings,...rotationForecasts.filter(f=>f.forecast.status!=='available').map(f=>`Earlier flight forecast unavailable: ${f.ident}`)];delayIndex.weather_strategy={...delayIndex.weather_strategy,primary:'Flight-time TAF and near-time METAR',origin_provider:delayIndex.factors.find(f=>f.key==='origin_weather'&&f.value!==null)?.source||null,arrival_provider:delayIndex.factors.find(f=>f.key==='arrival_weather'&&f.value!==null)?.source||null,policy:'Each airport weather factor uses a maximum of flight-time forecast and near-time observation. Source receipts state which inputs were used; no provider vote is added twice.'};}
-      if(delayIndex){delayIndex.operational_warnings=[...(originForecast?.warnings||[]).map(w=>({...w,airport:selected.origin?.code_iata||airport})),...(arrivalForecast?.warnings||[]).map(w=>({...w,airport:selected.destination?.code_iata||arrivalAirport})),...rotation.warnings];delayIndex.model_version='weather-rotation-v3';delayIndex.methodology='Actual-departure-only route baseline plus unvalidated live adjustments. Flight-time TAF and near-time observations use a maximum, not a sum. Earlier weather warns without assuming carry-over. Verified previous aircraft legs use absorbed-delay propagation; combined inbound risk uses a maximum, not a sum. Backtesting validates only the historical baseline, not these operational heuristics.';delayIndex.live_series=await recordIndexSnapshot(`v3|${selected.fa_flight_id||`${selected.ident}|${selected.scheduled_out}`}`,delayIndex);}
+      if(delayIndex){delayIndex.operational_warnings=[...(originForecast?.warnings||[]).map(w=>({...w,airport:selected.origin?.code_iata||airport})),...(arrivalForecast?.warnings||[]).map(w=>({...w,airport:selected.destination?.code_iata||arrivalAirport})),...rotation.warnings];delayIndex.model_version='weather-rotation-slot-v4';delayIndex.methodology='Actual-departure-only route baseline plus unvalidated live adjustments. Flight-time TAF and near-time observations use a maximum, not a sum. Earlier weather warns without assuming carry-over. Verified previous aircraft legs use absorbed-delay propagation; combined inbound risk uses a maximum, not a sum. Backtesting validates only the historical baseline, not these operational heuristics.';}
       const [selectedPosition, priorPosition] = await Promise.all([
         selected.actual_out && !selected.actual_in && selected.fa_flight_id ? aero(`/flights/${encodeURIComponent(selected.fa_flight_id)}/position`) : null,
         inboundAircraft?.actual_out && !inboundAircraft?.actual_in && inboundAircraft.fa_flight_id ? aero(`/flights/${encodeURIComponent(inboundAircraft.fa_flight_id)}/position`) : null
@@ -534,6 +536,7 @@ app.get('/api/flights/:ident', async (req, res) => {
     const payload={ flights: flights.slice(0, 6), requested_date: requestedDate || null, schedule_only:futureSchedule, schedule_notice:futureSchedule?'Published airline schedule. Live status, gate, inbound aircraft, airport conditions, and weather are added closer to departure.':null, resolved_ident: result.candidate, route_options: routeOptions, diagnostics, delay_index: delayIndex, inbound_aircraft: inboundAircraft, aircraft_rotation:aircraftRotation, flight_position: flightPosition, inbound_position: inboundPosition, refreshed_at: refreshedAt };
     payload.delay_reasoning = delayReasoning;
     payload.takeoff_slot = await loadTakeoffSlot({...selected,schedule_only:futureSchedule});
+    if(delayIndex){applySlotRisk(delayIndex,{...selected,schedule_only:futureSchedule},payload.takeoff_slot);delayIndex.live_series=await recordIndexSnapshot(`v3|${selected.fa_flight_id||`${selected.ident}|${selected.scheduled_out}`}`,delayIndex);}
     cacheLookup(cacheKey,payload);
     res.json(payload);
   } catch {
