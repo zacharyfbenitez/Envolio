@@ -55,8 +55,8 @@ test('site-wide layout and traveler results states',{timeout:120000},async t=>{
     assert.ok(await page.evaluate(()=>document.querySelector('.inbound-summary').getBoundingClientRect().top<document.querySelector('.flight-analysis').getBoundingClientRect().top));
     await page.$$eval('.risk-context details',es=>es.forEach(e=>e.open=true));
     assert.match(await page.$eval('.risk-audit',e=>e.textContent),/Live aircraft/);
-    assert.ok(await page.$('.aircraft-chain'));
     assert.match(await page.$eval('.takeoff-slot.assigned',e=>e.textContent),/Assigned takeoff time/);
+    assert.ok(await page.$eval('.flight-summary',e=>Boolean(e.querySelector('.takeoff-slot.assigned'))),'ATC assignment is inside the primary flight summary');
     assert.match(await page.$eval('.takeoff-slot.assigned',e=>e.textContent),/Not gate departure/);
     assert.match(await page.$eval('.takeoff-slot.assigned',e=>e.textContent),/UTC \(Zulu\)/);
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`Expanded risk audit overflow at ${width}`);

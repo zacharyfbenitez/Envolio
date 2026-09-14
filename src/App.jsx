@@ -2166,7 +2166,7 @@ function TravelerOutlook({ data, future }) {
   return <section className="everyday-outlook projected-delay" aria-label="Your delay outlook">
     <article className={`everyday-chance ${chance.tone}`}>
       <span className="outlook-label">Envolio delay outlook</span>
-      <h3>Chance of leaving 15+ min late: <strong className={chance.percent===null?'chance-unavailable':undefined}>{chance.percent!==null?`${chance.percent}%`:'Unavailable'}</strong></h3>
+      <h3>Chance of leaving 15+ min late: <strong className={chance.percent===null?'chance-unavailable':undefined}>{chance.percent!==null?<AnimatedNumber value={chance.percent} suffix="%" duration={750}/>:'Unavailable'}</strong></h3>
       {chance.percent!==null&&<div className="chance-meter" aria-hidden="true"><i style={{width:`${chance.percent}%`}}/></div>}
 
       <small className="estimate-label">{chance.percent===null?'Missing data does not mean on time.':data.delay_index?.calibration?.material_signal&&!data.delay_index?.slot_adjustment?'Estimate · not a guarantee':'Experimental estimate · not a guarantee'}</small>
@@ -3104,6 +3104,7 @@ function FlightDetailV2({
                 />
               ))}
             </section>}
+          {!f.actual_off && !f.actual_in && !cancelled && !diverted && <TakeoffSlot slot={state.data.takeoff_slot} airport={f.origin} scheduled={f.scheduled_out} cached={state.data.cache_fallback?.active}/>}
         </section>
         </section>
         {phase === 'upcoming' && !cancelled && !diverted && <InboundSummary flight={inbound} position={state.data.inbound_position} current={f} refreshed={state.data.refreshed_at} cached={state.data.cache_fallback?.active} rotation={state.data.aircraft_rotation}/>}
@@ -3111,7 +3112,6 @@ function FlightDetailV2({
           <NextStepCard flight={f} data={state.data} changes={changes} />
 
         </div>
-        {!f.actual_off && !f.actual_in && !cancelled && !diverted && <TakeoffSlot slot={state.data.takeoff_slot} airport={f.origin} scheduled={f.scheduled_out} cached={state.data.cache_fallback?.active}/>}
         {phase === 'upcoming' && !!state.data.delay_index?.operational_warnings?.length && <details className="operational-warnings" aria-label="Weather and aircraft warnings"><summary>What to watch · {state.data.delay_index.operational_warnings.length} {state.data.delay_index.operational_warnings.length===1?'update':'updates'}</summary><p>These signals can affect your flight. They are not all confirmed causes of a delay.</p>{state.data.delay_index.operational_warnings.map((warning,i)=><details key={`${warning.kind}-${i}`}><summary>{warning.airport?`${warning.airport}: `:''}{warning.title}</summary><p>{warning.detail}</p><small>{warning.source}{warning.issued_at?` · Forecast issued ${new Date(warning.issued_at).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'})}`:''}</small>{warning.periods?.length>0&&<div><p>Forecast periods · your device’s time zone</p>{warning.periods.map((period,n)=><p key={n}>{new Date(period.from).toLocaleString()} – {new Date(period.to).toLocaleString()}{period.weather_probability!=null?` · ${period.weather_probability}% chance of the weather, not of a flight delay`:''}</p>)}</div>}</details>)}</details>}
         {phase === "upcoming" ? (
           <>

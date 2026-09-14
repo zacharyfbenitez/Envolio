@@ -36,7 +36,7 @@ try{
  };
  await p.setViewport({width:1440,height:900});await p.goto(base,{waitUntil:'networkidle2'});await p.waitForSelector('#flight-query');await capture('01-home-desktop');
  await p.setViewport({width:390,height:844});await p.evaluate(()=>scrollTo(0,0));await capture('02-home-phone');await capture('03-search-phone','.finder-form');
- await p.click('.pwa-dock button:nth-child(2)');await new Promise(r=>setTimeout(r,500));await capture('04-saved-phone');
+ await p.evaluate(()=>scrollTo(0,0));await p.waitForFunction(()=>!document.querySelector('.dock-shelf')?.dataset.hidden);await p.click('.pwa-dock button:nth-child(2)');await new Promise(r=>setTimeout(r,500));await capture('04-saved-phone');
  await p.click('.pwa-dock button:last-child');await capture('05-app-menu-phone');await p.keyboard.press('Escape');
  await p.goto(base+'flight/SQ12?date=2026-09-14&origin=NRT',{waitUntil:'domcontentloaded'});await p.waitForSelector('.flight-title');await capture('06-result-phone');await capture('07-route-phone','.flight-title');
  const alerts=await p.$('.alerts-button');if(alerts){await alerts.click();await capture('08-alert-menu-phone');await p.click('.alerts-modal .modal-close').catch(()=>{});}

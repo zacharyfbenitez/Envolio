@@ -25,8 +25,10 @@ test('web launch: contained search, saved flights, recovery and keyboard alerts'
    });
   }),`homepage sections align and do not overlap at ${width}`);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`homepage fits ${width}`);
+  assert.equal(await page.$eval('.dock-shelf',e=>getComputedStyle(e).display),width>=768?'none':'block',`dock visibility at ${width}`);
   await page.focus('#flight-query');assert.equal(await page.$eval('.pwa-dock',e=>getComputedStyle(e).visibility),'hidden');
  }
+ await page.setViewport({width:320,height:740});await page.goto(base);await page.waitForSelector('.finder-submit');assert.ok(await page.$eval('.finder-submit',e=>e.getBoundingClientRect().bottom<=document.querySelector('.dock-shelf').getBoundingClientRect().top-8),'primary search action fits above the dock on a short phone viewport');await page.evaluate(()=>scrollTo(0,500));await page.waitForFunction(()=>document.querySelector('.dock-shelf')?.dataset.hidden==='true');
  await page.evaluate(()=>localStorage.setItem('contrail.saved',JSON.stringify([{ident:'SQ12',date:'2026-09-14',key:'SQ12|2026-09-14',origin:{code_iata:'NRT'},destination:{code_iata:'LAX'}}])));
  await page.goto(base+'/dashboard');await page.waitForSelector('.saved-page .saved-main');assert.match(await page.$eval('.saved-main',e=>e.textContent),/SQ12/);
  await page.click('.remove-save');assert.match(await page.$eval('.saved-page',e=>e.textContent),/No saved flights yet/);

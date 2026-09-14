@@ -51,3 +51,16 @@
  .home-page>.product-notes{grid-template-columns:1fr;gap:24px;padding:20px}
  .home-page .showcase-cities{margin:28px 0}
 }
+@media(max-width:360px){
+ .home-page .home-sky{display:none}
+ .home-page>.hero{padding-top:4px}
+ .home-page .home-kicker{display:inline-flex;position:absolute;top:4px;left:50%;translate:-50% 0;transform:none!important;width:max-content}
+ .home-page .hero h1{font-size:25px;margin:6px auto}
+ .home-page .hero .intro{font-size:14px!important;margin:8px auto}
+ .home-page .hero .flight-finder{margin-top:10px}
+ .home-page .hero .finder-form{gap:10px;padding:12px}
+ .home-page .hero .input-wrap{min-height:48px!important}
+ .home-page .hero .finder-guidance{font-size:12px}
+ .home-page .hero .finder-fields{gap:9px}
+ .home-page .hero .finder-submit{height:48px!important;min-height:48px;padding:10px}
+}

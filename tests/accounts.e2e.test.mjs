@@ -44,7 +44,7 @@ test('accounts: verified signup, favorites, saving, profile editing, friends, tr
  await p.click('.account-onboarding .account-check:last-of-type input');await p.click('.account-onboarding .account-primary');await p.waitForSelector('.account-hero');
  console.log('Account QA: profile created');await p.waitForSelector('.profile-preference-tiles');assert.equal(await p.$eval('.profile-preference-tiles',e=>e.textContent.includes('Porter Airlines')),true);
  assert.equal(await p.$eval('.account-hero',e=>e.textContent.includes('traveler@example.com')||e.textContent.includes('2125550123')),false);
- for(const width of [320,390,768,1440]){await p.setViewport({width,height:900});assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`Account overflow at ${width}`);}
+ for(const width of [320,390,768,1440]){await p.setViewport({width,height:900});assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`Account overflow at ${width}`);if(width===320){assert.equal(await p.$eval('.account-tabs-hint',e=>getComputedStyle(e).display),'block');assert.match(await p.$eval('.account-tabs-hint',e=>e.textContent),/Profile & Settings/);}}
  await p.setViewport({width:390,height:844});await p.screenshot({path:'/tmp/envolio-account-mobile.png',fullPage:true});
  await p.goto(`http://127.0.0.1:${server.address().port}/flight/SQ12?date=2026-09-15`);await p.waitForSelector('.flight-summary');
  // Signing in starts a separate saved-flight sync. Do not click the disabled

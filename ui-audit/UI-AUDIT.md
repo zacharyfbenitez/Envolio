@@ -1,107 +1,121 @@
-# Envolio UI audit
+# Envolio UX/UI audit
 
-September 13, 2026 · Audit only; no production code changed.
+14 September 2026 · Current committed `main` at `9034021` · Audit only; no production behavior changed.
 
 ## Verdict
 
-The visual direction is coherent, but core task layout and navigation still need work. The highest-value next pass is to make search controls accessible, bring flight essentials forward, and repair the saved-flight and dialog flows. More animation should wait until these issues are resolved.
+The core product is usable and visually coherent on desktop and mobile. The prioritized dock, EDCT visibility, narrow-phone search, account-tab discovery, and small-type issues identified below are now addressed. Remaining polish work is concentrated in alert-sheet length, account overview density, and physical-device/accessibility certification.
+
+## Implementation update — 14 September 2026
+
+The prioritized UI pass is implemented:
+
+- The floating Search/Saved dock is removed at desktop widths and auto-hides while users scroll down on mobile, returning when they scroll up. Bottom safe-area spacing remains reserved.
+- EDCT/ATC status now renders inside the primary route summary. A successful FAA lookup with no matching assignment says “ATC / EDCT · none reported” and explains that an assignment can still be issued later.
+- At 320px, decorative sky art no longer consumes vertical space, the headline badge is positioned without pushing the form down, and the primary search action clears the dock in a 320×740 viewport.
+- Mobile account tabs now snap horizontally, center the selected destination, show a fade at the overflow edge, and include the cue “Swipe for Profile & Settings →”.
+- Flight-leg, timeline, diagnostics, alert, error, footer, and section metadata were raised to a readable 12–13px minimum in the audited surfaces. The capture’s sub-12px visible-text count fell from 22 to 4 in the densest expanded-analysis state and to zero in the other completed states.
+
+Validation passed for the production build, all 11 EDCT/slot tests, the expanded account flow, saved-flight cards, web-launch behavior, and the site-wide audit assertions in the first post-change run. A later combined run hit the site-audit outer timeout under VM load without an assertion failure; repeated isolated runs also exhausted the timeout, so that timing result is not reported as a pass. The capture script was updated to scroll upward before clicking the intentionally auto-hidden dock.
 
 ## Scope and evidence
 
-Inspected the running production bundle on port 5173 using Chromium at 1440×900, 390×844, and 320×740. Captured 17 screenshots covering home/search, saved empty state, dashboard with and without a favorite, upcoming and landed results, analysis unavailable state, app/watch menus, errors, and premium preview. Checked both reduced-motion and normal-motion home rendering.
+- Rebuilt the current commit and ran the browser capture at 320, 390, 768, and 1440px.
+- Inspected home/search, saved empty and populated states, upcoming and landed results, alert settings, unavailable analysis, error recovery, dashboard/account overview, premium preview, reduced-motion, and normal-motion states.
+- Inspected the authenticated account flow at 320, 390, 768, and 1440px after verified-code signup, including favorites, saved-flight synchronization, profile editing, friends, travel log, and privacy.
+- Checked focus entry/return, Escape behavior, viewport containment, page overflow, small text, small controls, empty/error messaging, and major content order.
+- Verified the live PD604 result and its FAA EDCT response separately. This is the clearest real-user example of ATC status being technically present but poorly discoverable.
+- Chromium automation is not physical Safari/iOS, Android keyboard, screen-reader, or installed-PWA certification.
 
-Flight results used the existing SQ12 test fixture with controlled state changes. Other API requests were intercepted with an unavailable response. This tests the actual UI without provider latency, paid requests, or real alert subscriptions; it does not validate live aviation data. No JavaScript runtime exceptions appeared in the 16-screen capture run.
+## Priority 1 findings — addressed in the implementation pass
 
-## Priority 1 — fix before calling the UI production-ready
+### 1. The fixed Search/Saved dock obscures content
 
-### 1. The dock covers search controls
+The dock floats over the page at every tested width. On account pages it covers statistics labels and values; on result pages it can cover route or supporting cards; on desktop it sits over the middle of wide content despite desktop navigation already being available in the header. Full-page screenshots make the collision especially visible, but it also occurs during ordinary scrolling.
 
-At 390×844, the fixed dock occupies approximately y756–830 while the search button begins at y811. The date helper and button are obscured, and the full search action is below the first screen. Desktop also places the submit button partly below the initial viewport and behind the dock. The large hero and spacing postpone the user's primary task.
+**Recommendation:** do not use the floating dock on desktop. On mobile, reserve a real bottom safe area and either auto-hide the dock while scrolling/reading, place it in a non-overlapping shell region, or ensure focused/anchored content is scrolled clear of it. Add overlap assertions for meaningful controls and text, not only document-width assertions.
 
-**Recommendation:** compact the hero without changing the requested slogan. Make the complete primary form accessible in the initial phone view where practical. Establish dock-aware scrolling and positioning, including input focus and the software keyboard. End-of-page padding alone does not protect controls elsewhere on the page.
+### 2. ATC/EDCT status is too deeply buried
 
-[Phone evidence](02-home-phone.png) · [Desktop evidence](01-home-desktop.png)
+`TakeoffSlot` correctly distinguishes assigned, removed, none-reported, stale, and unavailable states. However, it renders after the incoming-aircraft section and the next-step card. In the real PD604 screenshot, the visible result strongly suggests that no FAA check occurred even though production queried `POE604 / LGA / YYZ` and received no EDCT assignment.
 
-### 2. The search form exceeds its parent
+**Recommendation:** put a compact ATC row beside the operational status or immediately below the route summary: “No EDCT reported · checked FAA 5:09 AM”. Keep the detailed caveat lower on the page. Assigned/revised EDCTs should remain visually prominent and never be conflated with estimated departure time.
 
-On desktop, the finder parent is capped at 780px but the form is 940px wide, shifting its center 80px right. At 390px, the form extends to x385 instead of keeping the intended right gutter. The legacy `.search-box` width in `src/premium.css` leaks into the new form; `src/flight-search.css` does not reset it. Global clipping masks the overflow, so a document-width check alone passes.
+### 3. The 320px home flow does not expose the primary action quickly enough
 
-**Recommendation:** explicitly constrain the component to its parent and remove inherited legacy sizing. Add component-boundary assertions at desktop, phone, and narrow-phone sizes, including focus transforms.
+At 390×844 the complete form and Find my flight button fit above the dock. At 320×740, the form begins around y478 and the submit button ends around y803, below the initial viewport. The dock occupies the bottom reading area, making the action feel missing until the user scrolls.
 
-[Narrow-phone evidence](14-search-small-phone.png)
+**Recommendation:** reduce mobile hero spacing and form vertical padding below 360px, or move the finder higher. Test 320×568/667/740 with browser chrome and the software keyboard, not only a 900px-high viewport.
 
-### 3. The dashboard promises saved flights but does not display them
+### 4. Mobile account navigation hides tabs without a clear cue
 
-With a valid favorite stored, the dashboard reports “1 favorite flight saved in this browser” but renders only promotional/navigation cards. There is no flight list. Its “Available now” dashboard card links back to itself. This is confirmed in both the browser and the dashboard branch of `src/App.jsx`.
+The five account tabs are horizontally scrollable. At 320px only Overview, Travel log, and Friends are initially visible; My profile and Settings are off-screen. There is no fade, chevron, partial next item, or alternate menu indicating more destinations.
 
-The Saved dock takes users deep into the home page instead of a focused saved-flight destination. On the tested phone layout, that section is more than 4,500px down the document.
+**Recommendation:** add an obvious horizontal-scroll affordance, use a compact two-row layout, or collapse account sections into a labeled menu on narrow phones. Keep `aria-current` and keyboard navigation.
 
-**Recommendation:** give Saved flights one clear destination with actual flight cards, open/remove actions, and a useful empty-state search action. Remove the dashboard self-link and align availability wording with what the page delivers.
+## Priority 2 — remaining refinement
 
-[Populated-dashboard evidence](17-dashboard-saved-phone.png) · [Saved-section evidence](04-saved-phone.png)
+### 5. Meaningful text scale — addressed
 
-### 4. Results bury the flight's essential information
+Result metadata and multi-leg times render at 9–11px. Analysis labels include 9–10px text, and the alert sheet contains dense secondary copy. The information is technically present but difficult to scan, especially outdoors or under motion.
 
-The initial phone screen contains navigation, a large generic advice card, identity, status, three actions, and a leg selector before the route and flight times. The route block begins around y791; the dock covers it. Gate/terminal information requires further scrolling. Airline identity and “Scheduled” labels repeat across the result.
+**Recommendation:** use at least 12–13px for compact metadata and about 14px for meaningful secondary text. Preserve hierarchy with weight and color rather than extremely small sizes. Recheck contrast after increasing muted text brightness.
 
-**Recommendation:** lead with a compact flight summary: route, departure time, gate/terminal, status, and freshness. Keep the useful “What should I do?” recommendation adjacent, but scale generic advice down. Put secondary sharing and technical detail behind clearly named secondary controls. Preserve multi-leg selection, with readable times.
+### 6. Alert settings are long and the completion action is remote
 
-[Initial result](06-result-phone.png) · [Scrolled route](07-route-phone.png)
+The alert dialog now has correct dialog semantics, initial focus, focus containment, Escape handling, body-scroll locking, and honest auto-save behavior. On a phone, seven alert choices plus delivery controls create a long sheet; Done/View saved flights is below the initial viewport and not sticky.
 
-### 5. Watch settings lack basic dialog behavior
+**Recommendation:** group alert types into “Before departure” and “After landing”, make the footer action sticky, and keep the auto-save state explicit near the heading. Do not reintroduce a fake Save action.
 
-Opening Watch flight leaves keyboard focus outside the dialog. Escape does not close it. The custom dialog does not implement focus trapping/background isolation. The native App menu behaves differently. Share-card dialog code uses a similar custom pattern and needs the same review.
+### 7. Account overview is visually dense at 320px
 
-Watch preferences also persist immediately, while the bottom button says “Save watch settings” and only closes the panel. Closing with X therefore also saves changes, contrary to the implied draft workflow.
+The account overview remains contained, but four statistics cards, an empty-story prompt, favorites, and next-trip guidance form a long first page. The fixed dock overlaps the lower statistics cards, and some explanatory copy becomes visually secondary despite being important to how statistics are counted.
 
-**Recommendation:** use one accessible dialog primitive with initial focus, contained tab order, Escape, focus return, and appropriate background scroll handling. Choose either explicit save/cancel or honest “Saved automatically” plus Done wording.
+**Recommendation:** prioritize the next action above empty statistics, collapse zero-value detail, and move the explanation into a concise info disclosure. Preserve the explicit distinction between saved flights and completed travel.
 
-[Watch settings](08-alert-menu-phone.png)
+### 8. Desktop pages underuse width while retaining the mobile dock
 
-## Priority 2 — readability and recovery
+The desktop flight and account cards are attractive and readable, but the centered floating dock interrupts otherwise strong layouts. Some secondary panels remain vertically stacked even when there is room for contextual side-by-side placement. The result page is over 2,100px tall before expanded analysis.
 
-### 6. Secondary text remains too small
+**Recommendation:** remove the desktop dock, use the header as primary navigation, and place ATC status/next action in the open right-hand result column. Avoid widening prose; use width to improve information grouping.
 
-Computed sizes in visible states include 8px product availability labels, 9px leg times/section labels, and 8–10px diagnostics labels. The wrong-flight report control is only about 14px tall. Unavailable analysis puts a large heading above much smaller, faint explanation text. These are meaningful facts/actions, not decorative details.
+### 9. Footer attribution is cramped on mobile
 
-**Recommendation:** use a consistent type scale: roughly 16px body, 14px secondary text, and 13px or more for compact meaningful labels. Increase contrast and line height alongside font size. Target comfortable 44px controls where practical. Small checkbox inputs are not independently classified as failures because their surrounding labels may extend the clickable area. This audit is not a full WCAG contrast certification.
+At 390px the brand and FlightAware attribution compete for one short row; at narrower widths the footer either becomes cramped or drops useful context. This is a visual-quality and legal-attribution readability concern.
 
-[Analysis evidence](10-analysis-desktop.png) · [Route labels](07-route-phone.png)
+**Recommendation:** stack footer brand, product line, and attribution on mobile with explicit spacing and a minimum 12px readable size.
 
-### 7. Error recovery discards the search
+## QA integrity issue
 
-After a failed lookup, Edit search returns to an empty query field. Users must reconstruct their request. Error text also includes provider/deadline and departure-local terminology that is harder to act on than plain recovery guidance.
+The default Vite `PUBLIC_BASE` is still the previous chat.dev machine path. A plain `npm run build` succeeds but the static browser suite then loads assets from the wrong base and times out. Rebuilding with `PUBLIC_BASE=/` makes the complete account suite pass. This can produce false UI regressions on replacement machines and should be removed from the default configuration or made explicit in test scripts.
 
-**Recommendation:** preserve flight text, date, and airport choices. Offer Retry and Edit this search. Explain the distinction between a temporary service problem and no matching published flight, using everyday wording. Code review also found that route landing pages render a generic search form without prefilled route context.
+The site-audit browser test also expects `.aircraft-chain`, but current JSX no longer renders that element. The rest of the audit batch passed. This assertion is stale unless the aircraft-chain UI was unintentionally removed; product intent needs to decide which.
 
-[Error evidence](12-error-phone.png)
+## Improvements confirmed since the prior audit
 
-### 8. Sharing feedback is unreliable
-
-The result share handler reports “Link copied” after either clipboard copying or native sharing, although these are different outcomes. Clipboard/share errors are swallowed. This is code-confirmed; actual phone share-sheet behavior was not exercised.
-
-**Recommendation:** separate copied, shared, canceled, and failed states. Provide a selectable link if clipboard access fails. Make preview CTAs describe their real destination: “View a live report” currently sends the user back to search rather than directly to a report.
-
-## What is working
-
-- Passport branding is clean and readable.
-- Main text and primary buttons have strong visual hierarchy and contrast.
-- Country flags look crisp and aligned in the inspected route state.
-- The native App menu is more consistent than the custom watch dialog.
-- Unavailable probability data is disclosed instead of replaced with an invented score.
-- No page-level horizontal scrolling or runtime exceptions occurred in the captured states, though component overflow remains.
+- Search now remains inside its parent at all tested widths.
+- The Saved destination now shows real flight cards with view, remove, and notification actions.
+- Error recovery preserves the flight number and date and offers both Try again and Edit search.
+- Upcoming results now place flight identity, route, local times, terminal/gate, and delay outlook in the first card.
+- Watch settings now implement initial focus, focus trapping, Escape close, focus return, and body-scroll locking.
+- Account signup, profile editing, favorites, saved-flight sync, friends, travel-log add/remove, and privacy settings pass the expanded browser flow.
+- No JavaScript page exceptions or document-level horizontal overflow occurred in the 17-state capture.
 
 ## Recommended implementation order
 
-1. Fix finder sizing and dock overlap; verify primary actions with the phone keyboard open.
-2. Deliver a real Saved flights destination and preserve searches during recovery.
-3. Reorder results around flight essentials and concise actionable advice.
-4. Standardize dialogs, typography, hit areas, and share feedback.
-5. Consolidate overlapping legacy CSS rules into scoped components and shared sizing/type tokens.
-6. Add regression checks for parent containment, dialog keyboard behavior, saved-flight navigation, and search recovery—not just whole-page overflow.
+1. Remove/relocate the desktop dock and make mobile content dock-safe.
+2. Surface a compact ATC/EDCT checked state in the primary flight summary.
+3. Fit the finder action on short 320px phones and test keyboard-open behavior.
+4. Make all account sections discoverable without unexplained horizontal scrolling.
+5. Raise small type, simplify the alert sheet, and stack the mobile footer.
+6. Fix `PUBLIC_BASE` test portability and reconcile the stale aircraft-chain assertion.
 
-## Remaining checks before release
+## Remaining release checks
 
-This pass did not certify populated historical/live charts, in-flight map rendering, slow-loading transitions, real iOS/Android keyboard behavior, screen readers, installed-PWA safe areas, or live email/SMS delivery. These need targeted checks after the structural fixes. Fixture results should not be treated as evidence of provider freshness, prediction accuracy, or live flight coverage.
+Perform physical iPhone Safari and Android Chrome checks with the keyboard open, VoiceOver/TalkBack navigation, 200% text zoom, high-contrast/forced-colors behavior, installed-PWA safe areas, native share/cancel/failure handling, populated long travel histories, long translated strings, and slow/offline account transitions. Registration, SMS, account deletion, report moderation, and background delivery remain outside this visual audit and are not complete.
+## Motion and engagement follow-up
 
-Machine-readable measurements: [observations.json](observations.json). Reproducible screenshot script: [capture.mjs](capture.mjs).
+- Smoothed hover elevation with a restrained spring-like easing, smaller lift, and softer shadow on result, saved-flight, and account surfaces.
+- Added short staggered entrances for result sections, saved cards, and account statistics, plus an animated delay-chance meter.
+- Extended animated counting to the traveler-facing delay percentage while retaining the existing account-stat counters.
+- All added motion is disabled by `prefers-reduced-motion: reduce`; transforms do not change document flow.
