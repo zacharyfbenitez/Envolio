@@ -20,6 +20,7 @@ import TakeoffSlot from './TakeoffSlot.jsx';
 import CarrierLogo from './CarrierLogo.jsx';
 import {carrierName} from './carrier-name.js';
 import {AirportExplorer} from './TripStrategy.jsx';
+const AccountArea=React.lazy(()=>import('./AccountArea.jsx'));
 import {
   ArrowRight,
   Bell,
@@ -338,6 +339,8 @@ function useRoute() {
     if (airport)
       return { page: "airport-landing", airport: airport[1].toUpperCase() };
     if (path.startsWith("/dashboard")) return { page: "dashboard" };
+    if (path==='/account'||path.startsWith('/account/')) return {page:'account',section:query.get('section')||'overview'};
+    const profile=path.match(/^\/u\/([a-z][a-z0-9_]{2,23})\/?$/);if(profile)return {page:'profile',handle:profile[1]};
     if (path.startsWith("/premium")) return { page: "premium" };
     if (path.startsWith("/developers")) return { page: "developers" };
     return { page: "home" };
@@ -346,7 +349,8 @@ function useRoute() {
   useEffect(() => {
     const f = () => setR(read());
     addEventListener("popstate", f);
-    return () => removeEventListener("popstate", f);
+    const account=()=>{history.pushState({},'',`${base}account`);setR(read());scrollTo({top:0,behavior:'instant'});};addEventListener('envolio:account',account);
+    return () => {removeEventListener("popstate", f);removeEventListener('envolio:account',account);};
   }, []);
   return [
     r,
@@ -402,7 +406,7 @@ function Header({ go }) {
         </span>
         <span>ENVOLIO</span>
       </button>
-      <AccountButton/>
+      <AccountButton go={go}/>
       <button className="nav-link" onClick={() => go(base)}>
         New search <ArrowRight size={16} />
       </button>
@@ -3192,6 +3196,7 @@ function Application() {
     s = useSaved();
   return <WebShell go={go}>{s.storageError&&<div className="storage-warning" role="status">This browser couldn’t save your changes. Saved flights are available for this visit only.</div>}{route.page === 'flight'
     ? <FlightDetailV2 key={[route.ident,route.date,route.origin,route.destination,route.departure].join('|')} {...route} go={go} saved={s.saved} toggle={s.toggle} storageError={s.storageError}/>
+    : ['account','profile'].includes(route.page)?<><Header go={go}/><React.Suspense fallback={<main className="account-loading" role="status">Loading your account…</main>}><AccountArea route={route} go={go}/></React.Suspense><Footer go={go}/></>
     : route.page !== 'home' ? <ExplorePage route={route} go={go} saved={s.saved} remove={s.remove} storageError={s.storageError}/>
     : <Home go={go} saved={s.saved} remove={s.remove}/>}</WebShell>;
 }

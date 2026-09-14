@@ -26,6 +26,6 @@ export function rememberFlight(ident,date,flight){
  }catch{/* Saving extra details must not block the lookup. */}
 }
 export function journeySnapshot(flight,checkedAt){
- const fields=['scheduled_out','estimated_out','actual_out','scheduled_in','estimated_in','actual_in','actual_off','status','cancelled','diverted','schedule_only','gate_origin','terminal_origin'];
+ const fields=['scheduled_out','estimated_out','actual_out','scheduled_in','estimated_in','actual_in','actual_off','actual_on','status','cancelled','diverted','schedule_only','gate_origin','terminal_origin','aircraft_type'];
  return {...Object.fromEntries(fields.map(key=>[key,flight[key]])),checked_at:checkedAt||new Date().toISOString()};
 }

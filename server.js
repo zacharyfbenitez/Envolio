@@ -26,6 +26,7 @@ app.disable('x-powered-by');
 app.use((_req,res,next)=>{res.set({'X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Referrer-Policy':'strict-origin-when-cross-origin','Permissions-Policy':'geolocation=(), camera=(), microphone=()','Cross-Origin-Opener-Policy':'same-origin'});next()});
 const publicBase=(process.env.PUBLIC_BASE||'/p/bUpWZzvZpIOeEaBV-xsmW/5173').replace(/\/$/,'');
 app.use((req,_res,next)=>{if(req.url===publicBase||req.url.startsWith(`${publicBase}/`))req.url=req.url.slice(publicBase.length)||'/';next()});
+app.use((req,res,next)=>{if(/^\/(?:account(?:\/|$)|u\/)/.test(req.path))res.set({'X-Robots-Tag':'noindex, nofollow','Cache-Control':'private, no-store'});next();});
 // Only the public, read-only widget may be framed. The full app retains DENY.
 app.get(['/embed','/embed/','/embed.html'],(_req,res)=>{
   res.removeHeader('X-Frame-Options');
