@@ -28,7 +28,7 @@
 .carrier-logo,
 .flight-title .carrier-logo {
   background: transparent;
-  border-radius: 16px;
+  border-radius: 22%;
 }
 
 .carrier-logo img,
@@ -38,8 +38,13 @@
   display: block;
   object-fit: cover;
   border-radius: inherit;
-  transform: scale(1.035);
+  transform: none;
 }
+
+/* Size the artwork to its tile, not the old desktop icon dimensions.
+   Rectangular fallback wordmarks must remain complete, not zoomed/cropped. */
+.carrier-logo[data-artwork]{border-radius:22%!important;aspect-ratio:1;overflow:hidden;flex-shrink:0}
+.carrier-logo[data-artwork] img{width:100%!important;height:100%!important;object-fit:contain;transform:none;border-radius:0}
 
 .detail-grid.phase-upcoming {
   grid-template-columns: repeat(3, 1fr);

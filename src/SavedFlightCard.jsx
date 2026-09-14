@@ -11,7 +11,8 @@ export default function SavedFlightCard({item,go,remove,base}){
  const snapshot=recent?.snapshot&&(!item.snapshot||Date.parse(recent.snapshot.checked_at)>Date.parse(item.snapshot.checked_at))?recent.snapshot:item.snapshot;
  const carrier=item.ident.match(/^([A-Z0-9]{2})(?=\d)/)?.[1]||'';
  const airline=airlines.find(a=>a.code===carrier)?.name||(carrier==='PD'?'Porter Airlines':item.operator||'Airline');
- const status=snapshot?flightOptionStatus(snapshot):null;
+ const checked=Date.parse(snapshot?.checked_at);
+ const status=snapshot?flightOptionStatus(snapshot,checked):null;
  const departure=snapshot?.actual_out||snapshot?.estimated_out||snapshot?.scheduled_out,arrival=snapshot?.actual_in||snapshot?.estimated_in||snapshot?.scheduled_in;
  return <article className="saved-card journey-card">
   <button className="saved-main journey-main" onClick={()=>go(journeyUrl(item,base))} aria-label={`Open ${item.ident}, ${airportCode(item.origin)} to ${airportCode(item.destination)}`}>

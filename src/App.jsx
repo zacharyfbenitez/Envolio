@@ -1,4 +1,4 @@
-import {isCancelled,isDiverted,reportedStatus,positionReadout} from './flight-state.js';
+import {isCancelled,isDiverted,reportedStatus,positionReadout,departureTimingLabel} from './flight-state.js';
 import {AccountProvider,AccountButton,useAccount,cleanPreferences} from './Accounts.jsx';
 import React, { useEffect, useState, useRef } from "react";
 import {travelerAirport,arrivalDay} from './flight-summary.js';
@@ -18,6 +18,7 @@ import InboundSummary from './InboundSummary.jsx';
 import RiskContext from './RiskContext.jsx';
 import TakeoffSlot from './TakeoffSlot.jsx';
 import CarrierLogo from './CarrierLogo.jsx';
+import {carrierName} from './carrier-name.js';
 import {AirportExplorer} from './TripStrategy.jsx';
 import {
   ArrowRight,
@@ -594,7 +595,7 @@ function Home({ go, saved, remove }) {
               <div>
                 <b>Your watchlist starts here</b>
                 <p>
-                  Open any example flight and select “Watch flight” to save it and keep it one
+                  Open any example flight and select “Save flight” to keep it one
                   click away.
                 </p>
               </div>
@@ -630,7 +631,8 @@ function Home({ go, saved, remove }) {
     </>
   );
 }
-function ExplorePage({ route, go, saved, remove }) {
+function ExplorePage({ route, go, saved, remove, storageError }) {
+  const account=useAccount();
   const isRoute = route.page === "route-landing",
     title = isRoute
       ? `${route.origin} to ${route.destination} flight tracker`
@@ -646,12 +648,12 @@ function ExplorePage({ route, go, saved, remove }) {
           <h1>Saved flights</h1>
           <p>
             {saved.length
-              ? `${saved.length} flight${saved.length === 1 ? "" : "s"} saved in this browser.`
-              : "No saved flights yet. Find a flight and select Watch flight to save it here."}
+              ? `${saved.length} flight${saved.length === 1 ? "" : "s"} ${storageError ? 'kept for this visit only' : account?.user ? 'saved to your account' : 'saved in this browser'}.`
+              : "No saved flights yet. Find a flight and select Save flight to keep it here."}
           </p>
           <div className="saved-grid">{saved.map(item=><SavedFlightCard key={item.key} item={item} go={go} remove={remove} base={base}/>)}</div>
           <button className="primary" onClick={()=>go(base)}>Find a flight</button>
-          <p>Saved on this device. Open a flight to check for the latest updates.</p>
+          <p>{storageError ? 'Browser storage is blocked. These flights may disappear when you reload.' : account?.user ? 'Your saved flights sync across devices when you sign in.' : 'Saved on this device.'} Open a flight to check for the latest updates.</p>
         </main>
         <Footer go={go} />
       </>
@@ -1458,7 +1460,7 @@ function DeliverySignup({ flightKey, prefs }) {
     </section>
   );
 }
-function AlertSettings({ open, onClose, flightKey, flightLabel }) {
+function AlertSettings({ open, onClose, flightKey, flightLabel, isSaved, storageError, onViewSaved }) {
   const account=useAccount(),[cloudReady,setCloudReady]=useState(false),[cloudError,setCloudError]=useState('');
   const [emailEnabled,setEmailEnabled]=useState(false);
   const sheet=useRef(null),closeAction=useRef(onClose);
@@ -1535,8 +1537,8 @@ function AlertSettings({ open, onClose, flightKey, flightLabel }) {
       >
         <div className="alert-sheet-head">
           <div>
-            <span>Flight watch settings</span>
-            <h2 id="alerts-title">Watch {flightLabel}</h2>
+            <span>{isSaved ? storageError ? 'Kept for this visit only' : account?.user ? 'Saved to your account' : 'Saved on this device' : 'Notification settings'}</span>
+            <h2 id="alerts-title">{flightLabel} alerts</h2>
             <p>
               Choose which changes matter. Preferences and on-device alerts work
               now; background delivery is clearly labeled below.
@@ -1583,9 +1585,9 @@ function AlertSettings({ open, onClose, flightKey, flightLabel }) {
         </div>
         <DeliverySignup flightKey={flightKey} prefs={prefs} />
         <div className="alert-sheet-foot">
-          <p>Your watch settings are saved privately in this browser.</p>
-          <button className="primary" onClick={onClose}>
-            Done
+          <p>{storageError ? 'Browser storage is blocked. This flight may disappear when you reload.' : account?.user ? 'Find this flight in Saved on any device where you sign in.' : 'Find this flight in Saved on this browser. Alert choices are optional.'}</p>
+          <button className="primary" onClick={isSaved && onViewSaved ? onViewSaved : onClose}>
+            {isSaved && onViewSaved ? 'View saved flights' : 'Done'}
           </button>
         </div>
       </section>
@@ -2595,7 +2597,7 @@ function FlightDetail({ ident, date, go, saved, toggle }) {
           <div className="carrier-identity">
             <CarrierLogo flight={f} />
             <div>
-              <span>{f.operator || "Carrier not reported"}</span>
+              <span>{carrierName(f)}</span>
               <h1>{f.ident_iata || f.ident}</h1>
             </div>
           </div>
@@ -2717,6 +2719,7 @@ function FlightDetailV2({
   go,
   saved,
   toggle,
+  storageError,
 }) {
   const account=useAccount();
   const [state, setState] = useState({
@@ -2929,6 +2932,7 @@ function FlightDetailV2({
     isSaved = saved.some(
       (item) => item.key === favoriteKey || item.key === `${ident}|${date}`,
     );
+  const departureStatus=departureTimingLabel({...f,checked_at:state.data.refreshed_at});
   const signal =
     phase === "upcoming"
       ? inboundSignal(inbound, f)
@@ -2995,17 +2999,17 @@ function FlightDetailV2({
             <CarrierLogo flight={f} />
             <div>
               <span>
-                {f.operator || "Operating airline"}
+                {carrierName(f)}
                 {state.data.diagnostics?.match_type === "codeshare"
                   ? ` · operated as ${f.ident_iata || f.ident}`
                   : ""}
               </span>
               <h1>{state.data.diagnostics?.match_type === "codeshare" ? ident : f.ident_iata || f.ident}</h1>
-              <div className={`reported-status ${cancelled||diverted?"disrupted":""}`}><small>Reported status · FlightAware</small><strong>{state.data.cache_fallback?.active?'Saved update':reportedStatus(f)}</strong></div>
+              <div className={`reported-status ${cancelled||diverted?"disrupted":""}`} data-tone={!state.data.cache_fallback?.active?(departureStatus?.tone||(/delay/i.test(f.status||'')?'delayed':/on[ -]?time/i.test(f.status||'')?'on-time':undefined)):undefined}><small>{departureStatus?'Based on reported times':'Reported status'} · FlightAware</small><strong>{state.data.cache_fallback?.active?'Saved update':departureStatus?.label||reportedStatus(f)}</strong></div>
             </div>
           </div>
           <div className="title-actions">
-            <button className="alerts-button" disabled={!account?.ready||account?.busy} aria-busy={!account?.ready||account?.busy} onClick={async()=>{if(!isSaved){const ok=await toggle({ident,date,origin:f.origin,destination:f.destination,operator:f.operator,snapshot:journeySnapshot(f,state.data.refreshed_at)});if(ok===false)return;}setAlertsOpen(true);}}><Bell size={15}/>{account?.busy?'Syncing…':isSaved?'Watch settings':'Watch flight'}</button>
+            <button className="alerts-button" disabled={!account?.ready||account?.busy} aria-busy={!account?.ready||account?.busy} aria-label={isSaved ? storageError ? 'Kept for this visit. Open alert settings' : 'Flight saved. Open alert settings' : 'Save flight and choose alerts'} onClick={async()=>{if(!isSaved){const ok=await toggle({ident,date,origin:f.origin,destination:f.destination,operator:f.operator,snapshot:journeySnapshot(f,state.data.refreshed_at)});if(ok===false)return;}setAlertsOpen(true);}}>{isSaved ? <Check size={15}/> : <Bookmark size={15}/>}{account?.busy?'Syncing…':isSaved?storageError?'Kept for now':'Saved · alerts':'Save flight'}</button>
           </div>
         </section>
         <RouteChoices
@@ -3024,7 +3028,7 @@ function FlightDetailV2({
             <div className="route-carrier-preview">
               <CarrierLogo flight={f} />
               <span>
-                {f.operator || "Airline"} ·{" "}
+                {carrierName(f)} ·{" "}
                 {f.aircraft_type_friendly ||
                   f.aircraft_type ||
                   "Aircraft pending"}
@@ -3167,6 +3171,9 @@ function FlightDetailV2({
         onClose={() => setAlertsOpen(false)}
         flightKey={`${ident}.${date}`}
         flightLabel={state.data.diagnostics?.match_type === "codeshare" ? ident : f.ident_iata || f.ident}
+        isSaved={isSaved}
+        storageError={storageError}
+        onViewSaved={()=>{setAlertsOpen(false);go(`${base}dashboard`);}}
       />
       {shareCardOpen && (
         <ShareResultCard
@@ -3184,8 +3191,8 @@ function Application() {
   const [route, go] = useRoute(),
     s = useSaved();
   return <WebShell go={go}>{s.storageError&&<div className="storage-warning" role="status">This browser couldn’t save your changes. Saved flights are available for this visit only.</div>}{route.page === 'flight'
-    ? <FlightDetailV2 key={[route.ident,route.date,route.origin,route.destination,route.departure].join('|')} {...route} go={go} saved={s.saved} toggle={s.toggle}/>
-    : route.page !== 'home' ? <ExplorePage route={route} go={go} saved={s.saved} remove={s.remove}/>
+    ? <FlightDetailV2 key={[route.ident,route.date,route.origin,route.destination,route.departure].join('|')} {...route} go={go} saved={s.saved} toggle={s.toggle} storageError={s.storageError}/>
+    : route.page !== 'home' ? <ExplorePage route={route} go={go} saved={s.saved} remove={s.remove} storageError={s.storageError}/>
     : <Home go={go} saved={s.saved} remove={s.remove}/>}</WebShell>;
 }
 export default function App(){return <AccountProvider><Application/></AccountProvider>;}

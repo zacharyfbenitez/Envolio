@@ -1,3 +1,4 @@
+import {departureTimingLabel} from './flight-state.js';
 const majorCodes={AAL:'AA',DAL:'DL',UAL:'UA',ASA:'AS',JBU:'B6',SWA:'WN'};
 const regionalCodes=new Set(['RPA','YX','SKW','OO','EDV','9E','JIA','OH','ENY','MQ','PDT','PT','QXE','QX','ASH','YV','GJS','G7','UCA','C5','AWI','ZW']);
 const clean=value=>String(value||'').replace(/\s+/g,'').toUpperCase();
@@ -12,7 +13,7 @@ export function flightOptionIdentity(flight,preferred=''){
  const display=regional?(preferred&&preferredMatch?preferredMatch:majors[0]||operating):operating;
  return {display,operating,marketing:display!==operating,alternates:codes.filter(v=>v!==display),carrier:display.match(/^([A-Z0-9]{2})(?=\d)/)?.[1]||flight.operator_iata||flight.operator||''};
 }
-export function flightOptionStatus(flight){
+export function flightOptionStatus(flight,now=Date.now()){
  const status=flight.status||'';
  if(flight.cancelled||/cancel/i.test(status))return {tone:'cancelled',label:'Cancelled'};
  if(flight.diverted||/divert/i.test(status))return {tone:'delayed',label:'Diverted'};
@@ -20,6 +21,7 @@ export function flightOptionStatus(flight){
  if(flight.actual_off||/en route|airborne/i.test(status))return {tone:'airborne',label:'In flight'};
  const delay=(Date.parse(flight.estimated_out)-Date.parse(flight.scheduled_out))/60000;
  if(!flight.schedule_only&&(delay>=15||/delay/i.test(status)))return {tone:'delayed',label:Number.isFinite(delay)&&delay>=15?`${Math.round(delay)} min delayed`:'Delayed'};
+ const timing=departureTimingLabel(flight,now);if(timing)return timing;
  if(!flight.schedule_only&&/on[ -]?time/i.test(status))return {tone:'on-time',label:'On time'};
  if(!flight.schedule_only&&/board/i.test(status))return {tone:'airborne',label:'Boarding'};
  return {tone:'scheduled',label:flight.schedule_only?'Schedule only · open for updates':/scheduled/i.test(status)?'Scheduled':'Status unavailable'};
