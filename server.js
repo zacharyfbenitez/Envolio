@@ -712,8 +712,14 @@ app.post('/api/telemetry/lookup', (req,res)=>{
   res.status(202).json({ recorded:true, privacy:'Only an identifier pattern, reason, relative date, and route hint are retained.' });
 });
 
-app.get('/api/alerts/capabilities',(_req,res)=>res.json(alertCapabilities()));
+app.get('/api/alerts/capabilities',(_req,res)=>res.json(process.env.ENABLE_ACCOUNTS==='true'?{email:false,sms:false,note:'Manage account email updates in your flight notification settings.'}:alertCapabilities()));
+app.get('/api/accounts/config',(_req,res)=>{
+ const url=process.env.SUPABASE_URL,publishableKey=process.env.SUPABASE_PUBLISHABLE_KEY;
+ const enabled=process.env.ENABLE_ACCOUNTS==='true'&&/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url||'')&&!!publishableKey&&publishableKey.startsWith('sb_publishable_');
+ res.set('Cache-Control','no-store').json(enabled?{enabled:true,url,publishableKey,emailReady:process.env.ENABLE_ACCOUNT_EMAIL==='true'&&process.env.ACCOUNT_EMAIL_WORKER_READY==='true'}:{enabled:false});
+});
 app.post('/api/alerts/subscribe', async (req,res)=>{
+  if(process.env.ENABLE_ACCOUNTS==='true')return res.status(503).json({error:'Use your signed-in flight notification settings. Contact-based subscriptions are disabled for account deployments.'});
   if(process.env.ENABLE_ALERT_SUBSCRIPTIONS!=='true')return res.status(503).json({configured:false,error:'Text and email alerts are not available yet. You can check updates here without sharing your contact details.'});
   if(req.body?.consent!==true)return res.status(400).json({error:'Please agree to receive the selected flight alerts.'});
   const channel=req.body?.channel==='sms'?'sms':'email',contact=String(req.body?.contact||'').trim(),flight=String(req.body?.flight||'').replace(/[^a-z0-9]/gi,'').toUpperCase(),date=String(req.body?.date||''),events=Array.isArray(req.body?.events)?req.body.events.filter(value=>['inbound','gate','boarding','delay','probability','landing','baggage','cancelled'].includes(value)).slice(0,8):[];

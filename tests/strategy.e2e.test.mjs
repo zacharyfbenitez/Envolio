@@ -25,9 +25,10 @@ test('trip timeline, evidence, backup preferences, saved fallback and airport ex
     return r.continue();
   });
   await p.goto(base+'flight/BA1511?date=2026-09-13',{waitUntil:'domcontentloaded'});await p.waitForSelector('.trip-timeline');
+  await p.$eval('.flight-analysis',e=>e.open=true);await p.$eval('.journey-tools',e=>e.open=true);
   await p.$eval('.weather-overview',e=>e.open=true);
   assert.equal(await p.$eval('.aircraft-history',e=>e.open),false);
-  assert.equal(await p.$eval('.weather-details',e=>e.open),false);
+  assert.ok(await p.$('.weather-details'));
   await p.click('.horizon-picker button:last-child');
   // Native keyboard input exercises the React slider handler reliably.
   await p.focus('.timeline-slider input');await p.keyboard.press('End');

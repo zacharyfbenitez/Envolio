@@ -49,8 +49,8 @@ test('codeshare diagnostics and manual partner controls render',async t=>{
   const tomorrow=new Date(Date.now()+86400000).toISOString().slice(0,10);
   await page.goto(`${base}flight/BA1511?date=${tomorrow}`,{waitUntil:'domcontentloaded',timeout:30000});
   await page.waitForSelector('.flight-title',{timeout:15000});
-  assert.equal(await page.$eval('.flight-title h1',element=>element.textContent),'AA100');
-  assert.match(await page.$eval('.carrier-identity>div:last-child>span',element=>element.textContent),/marketed as BA1511/i);
+  assert.equal(await page.$eval('.flight-title h1',element=>element.textContent),'BA1511');
+  assert.match(await page.$eval('.flight-title',element=>element.textContent),/AA100/);
   await page.click('.lookup-diagnostics summary');
   assert.ok(await page.$('.match-confidence'));
   assert.ok(await page.$('.alternate-identifiers button'));
@@ -75,6 +75,6 @@ test('loading and provider-error states stay explicit and recoverable',async t=>
   await (await pendingRequest).respond({status:503,contentType:'application/json',body:JSON.stringify({error:'Live flight data is temporarily unavailable.',detail:'The provider did not respond before the lookup deadline.',diagnostics:{requested_ident:'ZZ999',requested_date:'2026-09-12',identifiers_tried:['ZZ999'],match_type:null,reason:'Provider timeout'}})});
   await page.waitForSelector('.error-panel',{timeout:5000});
   const copy=await page.$eval('.error-panel',element=>element.textContent);
-  assert.match(copy,/No flight status or delay probability was estimated/i);
+  assert.match(copy,/We haven’t guessed your flight status/i);
   assert.match(copy,/Edit search/i);
 });

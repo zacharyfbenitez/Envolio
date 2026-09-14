@@ -23,6 +23,7 @@
     "test": "npm run test:providers && npm run test:reasoning && npm run test:regression && npm run test:e2e"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.116.0",
     "@vitejs/plugin-react": "latest",
     "concurrently": "latest",
     "dotenv": "latest",

@@ -1,4 +1,5 @@
 import {isCancelled,isDiverted,reportedStatus,positionReadout} from './flight-state.js';
+import {AccountProvider,AccountButton,useAccount,cleanPreferences} from './Accounts.jsx';
 import React, { useEffect, useState, useRef } from "react";
 import {travelerAirport,arrivalDay} from './flight-summary.js';
 import {travelerAlert} from '../alert-delivery.js';
@@ -356,6 +357,7 @@ function useRoute() {
   ];
 }
 function useSaved() {
+  const account=useAccount();
   const [saved, setSaved] = useState(() => {
     try {
       return readJourneys(SAVED_KEY);
@@ -371,10 +373,12 @@ function useSaved() {
   useEffect(()=>{const sync=e=>{if(e.key===SAVED_KEY)setSaved(readJourneys(SAVED_KEY));};addEventListener('storage',sync);return()=>removeEventListener('storage',sync);},[]);
   useEffect(()=>{const sync=()=>setSaved(readJourneys(SAVED_KEY));addEventListener('envolio:journeys-updated',sync);return()=>removeEventListener('envolio:journeys-updated',sync);},[]);
   return {
-    saved,
+    saved:account?.client?account.saved:saved,
     storageError,
     toggle: (item) => {
+      if(account&&!account.ready)return false;
       const key = `${item.ident}|${item.date}|${code(item.origin)}`;
+      if(account?.client){if(account.busy)return false;const existing=account.saved.find(x=>x.key===key);return existing?account.remove(key):account.save({...item,key,favorite:true});}
       update(
         saved.some(
           (x) => x.key === key || x.key === `${item.ident}|${item.date}`,
@@ -385,7 +389,7 @@ function useSaved() {
           : [{ ...item, key, favorite: true }, ...saved].slice(0, 20),
       );
     },
-    remove: (key) => update(saved.filter((x) => x.key !== key)),
+    remove: (key) => account?.client?account.remove(key):update(saved.filter((x) => x.key !== key)),
   };
 }
 function Header({ go }) {
@@ -397,6 +401,7 @@ function Header({ go }) {
         </span>
         <span>ENVOLIO</span>
       </button>
+      <AccountButton/>
       <button className="nav-link" onClick={() => go(base)}>
         New search <ArrowRight size={16} />
       </button>
@@ -1050,9 +1055,9 @@ function InboundAircraft({ flight, current }) {
 }
 function ChangeAwareValue({ label, displayLabel, value, flightKey }) {
   const storageKey = `contrail.assignment.${flightKey}.${label}`,
-    [previous] = useState(() => localStorage.getItem(storageKey));
+    [previous] = useState(() => {try{return localStorage.getItem(storageKey);}catch{return null;}});
   useEffect(() => {
-    if (value) localStorage.setItem(storageKey, String(value));
+    try{if (value) localStorage.setItem(storageKey, String(value));}catch{/* Storage restrictions must not hide flight details. */}
   }, [storageKey, value]);
   const changed = previous && value && previous !== String(value);
   return (
@@ -1321,9 +1326,8 @@ function assignmentChanges(f, ident, date) {
     ["Arrival terminal", f.terminal_destination],
     ["Arrival gate", f.gate_destination],
   ].flatMap(([label, value]) => {
-    const previous = localStorage.getItem(
-      `contrail.assignment.${ident}.${date}.${label}`,
-    );
+    let previous=null;
+    try{previous=localStorage.getItem(`contrail.assignment.${ident}.${date}.${label}`);}catch{/* No previous assignment is available in this browser. */}
     return previous && value && previous !== String(value)
       ? [{ label, previous, current: String(value) }]
       : [];
@@ -1455,6 +1459,8 @@ function DeliverySignup({ flightKey, prefs }) {
   );
 }
 function AlertSettings({ open, onClose, flightKey, flightLabel }) {
+  const account=useAccount(),[cloudReady,setCloudReady]=useState(false),[cloudError,setCloudError]=useState('');
+  const [emailEnabled,setEmailEnabled]=useState(false);
   const sheet=useRef(null),closeAction=useRef(onClose);
   closeAction.current=onClose;
   useEffect(()=>{
@@ -1474,7 +1480,7 @@ function AlertSettings({ open, onClose, flightKey, flightLabel }) {
     [prefs, setPrefs] = useState(() => {
       try {
         return (
-          JSON.parse(localStorage.getItem(key)) || {
+          cleanPreferences(JSON.parse(localStorage.getItem(key))) || {
             inbound: true,
             gate: true,
             boarding: true,
@@ -1504,6 +1510,9 @@ function AlertSettings({ open, onClose, flightKey, flightLabel }) {
   useEffect(() => {
     try{localStorage.setItem(key, JSON.stringify(prefs));}catch{/* Preferences remain usable for this visit. */}
   }, [key, prefs]);
+  useEffect(()=>{if(!open||!account?.user)return;let active=true;setCloudReady(false);setCloudError('');account.client.from('notification_preferences').select('events,email_enabled').eq('user_id',account.user.id).eq('flight_key',flightKey).maybeSingle().then(({data,error})=>{if(!active)return;if(error)setCloudError('Saved notification preferences could not load. Close and retry.');else{setPrefs(cleanPreferences(data?.events));setEmailEnabled(data?.email_enabled===true);setCloudReady(true);}});return()=>{active=false;};},[open,account?.user?.id,flightKey]);
+  const changeEmail=async enabled=>{setCloudReady(false);const {error}=await account.client.from('notification_preferences').upsert({user_id:account.user.id,flight_key:flightKey,events:prefs,email_enabled:enabled,consent_at:enabled?new Date().toISOString():null});if(error)setCloudError('Email preference could not be saved. Please retry.');else{setEmailEnabled(enabled);setCloudError('');}setCloudReady(true);};
+  const changePreference=async(id)=>{const next={...prefs,[id]:!prefs[id]};if(!account?.user){setPrefs(next);return;}setCloudReady(false);const {error}=await account.client.from('notification_preferences').upsert({user_id:account.user.id,flight_key:flightKey,events:next});if(error)setCloudError('Your changes could not sync. Please try again.');else{setPrefs(next);setCloudError('');}setCloudReady(true);};
   if (!open) return null;
   const request = async () => {
     if (typeof Notification === "undefined") return;
@@ -1537,15 +1546,17 @@ function AlertSettings({ open, onClose, flightKey, flightLabel }) {
             <X size={19} />
           </button>
         </div>
+        {cloudError&&<p role="alert">{cloudError}</p>}
+        {account?.user&&<div className="delivery-consent"><label><input type="checkbox" checked={emailEnabled} disabled={!cloudReady||(!account.emailReady&&!emailEnabled)} onChange={e=>changeEmail(e.target.checked)}/>Email me my selected flight updates. I can turn these off here anytime.</label>{!account.emailReady&&<p>Background email delivery is not available yet. Your preferences still sync across devices.</p>}</div>}
+        {account?.user&&!cloudReady&&!cloudError&&<p role="status">Syncing your notification preferences…</p>}
         <div className="alert-options">
           {alertOptions.map(([id, label, description]) => (
             <label key={id}>
               <input
                 type="checkbox"
                 checked={!!prefs[id]}
-                onChange={() =>
-                  setPrefs((current) => ({ ...current, [id]: !current[id] }))
-                }
+                disabled={!!account?.user&&!cloudReady}
+                onChange={() => changePreference(id)}
               />
               <i>{prefs[id] && <Check size={13} />}</i>
               <span>
@@ -1693,11 +1704,12 @@ function AlertEmitter({ flight, inbound, index, flightKey }) {
     events
       .slice(0, 2)
       .forEach(
-        ([title, body]) =>
-          new Notification(title, {
+        ([title, body]) => {
+          try{new Notification(title, {
             body,
             tag: `contrail-${flightKey}-${title}`,
-          }),
+          });}catch{/* Some mobile browsers expose permission but require service-worker notifications. */}
+        },
       );
   }, [flight, inbound, index, flightKey]);
   return null;
@@ -2706,6 +2718,7 @@ function FlightDetailV2({
   saved,
   toggle,
 }) {
+  const account=useAccount();
   const [state, setState] = useState({
     loading: true,
     error: "",
@@ -2992,7 +3005,7 @@ function FlightDetailV2({
             </div>
           </div>
           <div className="title-actions">
-            <button className="alerts-button" onClick={()=>{if(!isSaved)toggle({ident,date,origin:f.origin,destination:f.destination,operator:f.operator,snapshot:journeySnapshot(f,state.data.refreshed_at)});setAlertsOpen(true);}}><Bell size={15}/>{isSaved?'Watch settings':'Watch flight'}</button>
+            <button className="alerts-button" disabled={!account?.ready||account?.busy} aria-busy={!account?.ready||account?.busy} onClick={async()=>{if(!isSaved){const ok=await toggle({ident,date,origin:f.origin,destination:f.destination,operator:f.operator,snapshot:journeySnapshot(f,state.data.refreshed_at)});if(ok===false)return;}setAlertsOpen(true);}}><Bell size={15}/>{account?.busy?'Syncing…':isSaved?'Watch settings':'Watch flight'}</button>
           </div>
         </section>
         <RouteChoices
@@ -3167,7 +3180,7 @@ function FlightDetailV2({
   );
 }
 
-export default function App() {
+function Application() {
   const [route, go] = useRoute(),
     s = useSaved();
   return <WebShell go={go}>{s.storageError&&<div className="storage-warning" role="status">This browser couldn’t save your changes. Saved flights are available for this visit only.</div>}{route.page === 'flight'
@@ -3175,3 +3188,4 @@ export default function App() {
     : route.page !== 'home' ? <ExplorePage route={route} go={go} saved={s.saved} remove={s.remove}/>
     : <Home go={go} saved={s.saved} remove={s.remove}/>}</WebShell>;
 }
+export default function App(){return <AccountProvider><Application/></AccountProvider>;}

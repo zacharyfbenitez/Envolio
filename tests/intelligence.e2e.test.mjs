@@ -33,6 +33,7 @@ test('secondary provider context, conflicts, receipts, error recovery and mobile
   });
   await page.goto(base+'flight/BA1511?date=2026-09-12',{waitUntil:'domcontentloaded'});
   await page.waitForSelector('.source-conflicts',{timeout:15000});
+  await page.$eval('.flight-analysis',e=>e.open=true);
   assert.match(await page.$eval('.travel-intelligence',e=>e.textContent),/Weather odds are not delay odds/);
   assert.match(await page.$eval('.airport-outlooks',e=>e.textContent),/km\/h/);
   assert.equal(await page.$eval('.journey-tools',e=>e.open),false);

@@ -52,7 +52,7 @@ test('site-wide layout and traveler results states',{timeout:120000},async t=>{
     await page.$eval('.flight-analysis',e=>e.open=true);
     assert.equal(await page.$('.inbound-summary .mini-map'),null);
     assert.equal(await page.$eval('.inbound-details',e=>e.open),false);
-    assert.ok(await page.evaluate(()=>document.querySelector('.inbound-summary').getBoundingClientRect().top<document.querySelector('.projected-delay').getBoundingClientRect().top));
+    assert.ok(await page.evaluate(()=>document.querySelector('.inbound-summary').getBoundingClientRect().top<document.querySelector('.flight-analysis').getBoundingClientRect().top));
     await page.$$eval('.risk-context details',es=>es.forEach(e=>e.open=true));
     assert.match(await page.$eval('.risk-audit',e=>e.textContent),/Live aircraft/);
     assert.ok(await page.$('.aircraft-chain'));
