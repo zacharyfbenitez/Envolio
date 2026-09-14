@@ -55,7 +55,9 @@ const iataToIcao = {
   BR:'EVA', CX:'CPA', DL:'DAL', EK:'UAE', EY:'ETD', F9:'FFT', IB:'IBE', JL:'JAL', KE:'KAL',
   KL:'KLM', LA:'LAN', LH:'DLH', LX:'SWR', NH:'ANA', NK:'NKS', NZ:'ANZ', OS:'AUA', QF:'QFA',
   QR:'QTR', SK:'SAS', SQ:'SIA', SV:'SVA', TK:'THY', UA:'UAL', VS:'VIR', WN:'SWA', WS:'WJA',
-  '6E':'IGO'
+  '6E':'IGO', ET:'ETH', KQ:'KQA', SA:'SAA', '4Z':'LNK', FA:'SFR', P4:'APK', WB:'RWD', KP:'SKK',
+  DT:'DTA', TC:'ATC', UR:'UGD', PW:'PRF', AH:'DAH', TU:'TAR', AT:'RAM', MS:'MSR', MK:'MAU',
+  HM:'SEY', UU:'REU', TM:'LAM', BP:'BOT'
 };
 
 app.post('/api/search-access',async(req,res)=>{
@@ -243,8 +245,13 @@ async function loadComparableHistory(ident, flight) {
 }
 
 function minutesLate(flight) {
-  const scheduled = flight.scheduled_out || flight.scheduled_off;
-  const actual = flight.actual_out || flight.estimated_out || flight.actual_off || flight.estimated_off;
+  // Compare gate with gate and runway with runway. Once a real event exists,
+  // never let an unchanged estimate make a sparsely reported flight look on time.
+  const [scheduled,actual] = flight.actual_out?[flight.scheduled_out,flight.actual_out]
+    :flight.actual_off?[flight.scheduled_off,flight.actual_off]
+    :flight.estimated_out&&flight.scheduled_out?[flight.scheduled_out,flight.estimated_out]
+    :flight.estimated_off&&flight.scheduled_off?[flight.scheduled_off,flight.estimated_off]
+    :[null,null];
   return scheduled && actual ? Math.max(0, (new Date(actual) - new Date(scheduled)) / 60000) : null;
 }
 

@@ -9,6 +9,11 @@ test('Porter uses a familiar name without changing flight identity',()=>{
  assert.equal(carrierName({operator:'POE',operator_iata:'PD'}),'Porter Airlines');
  assert.equal(carrierName({operator:'Published Airline',ident_iata:'AA100'}),'Published Airline');
 });
+test('African ICAO operators use traveler-facing airline names',()=>{
+ assert.equal(carrierName({operator:'KQA',operator_icao:'KQA',ident_iata:'KQ762'}),'Kenya Airways');
+ assert.equal(carrierName({operator:'APK',operator_icao:'APK',ident_icao:'APK7538'}),'Air Peace');
+ assert.equal(carrierName({operator:'SAA',operator_icao:'SAA',ident_iata:'SA303'}),'South African Airways');
+});
 test('airline artwork stays square, rounded and uncropped on phone and desktop',{timeout:180000},async t=>{
  const app=express();app.use(express.static('dist'));app.use((_q,s)=>s.sendFile(process.cwd()+'/dist/index.html'));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>{server.closeAllConnections();server.close();});
  const browser=await puppeteer.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox','--renderer-process-limit=2']});t.after(()=>browser.close());const p=await browser.newPage(),errors=[];p.on('pageerror',e=>errors.push(e.message));await p.setBypassServiceWorker(true);await p.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);

@@ -45,12 +45,17 @@ export function scheduleCandidates(rows,{date,origin,destination,airport,normali
 export function mergeRouteStatus(schedules,payload,checkedAt){
  const direct=rows=>rows.flatMap(r=>r.segments?(r.segments.length===1?r.segments:[]):[r]);
  const rows=direct([...(payload?.flights||[]),...(payload?.scheduled_departures||[]),...(payload?.departures||[]),...(payload?.connections||[])]);
- const ids=f=>[f.ident,f.ident_iata,...(f.codeshares||[]),...(f.codeshares_iata||[])].filter(Boolean);
+ const ids=f=>[f.ident,f.ident_iata,f.ident_icao,...(f.codeshares||[]),...(f.codeshares_iata||[])].filter(Boolean).map(value=>String(value).replace(/\s/g,'').toUpperCase());
+ const africaOperators={ET:'ETH',KQ:'KQA',SA:'SAA','4Z':'LNK',FA:'SFR',P4:'APK',WB:'RWD',KP:'SKK',DT:'DTA',TC:'ATC',UR:'UGD',PW:'PRF',AH:'DAH',TU:'TAR',AT:'RAM',MS:'MSR',MK:'MAU',HM:'SEY',UU:'REU',TM:'LAM',BP:'BOT'};
+ const identity=f=>ids(f).map(id=>{const match=id.match(/^([A-Z]{3}|[A-Z0-9]{2})(\d{1,4}[A-Z]?)$/);if(!match)return id;const carrier=africaOperators[match[1]]||match[1];return `${carrier}|${match[2]}`;});
+ const sameIdentity=(a,b)=>ids(a).some(id=>ids(b).includes(id))||identity(a).some(id=>identity(b).includes(id));
  const sameAirport=(a,b)=>[a?.code,a?.code_iata,a?.code_icao].filter(Boolean).some(c=>[b?.code,b?.code_iata,b?.code_icao].includes(c));
  return schedules.map(f=>{
-  const matches=rows.filter(r=>Date.parse(r.scheduled_out)===Date.parse(f.scheduled_out)&&sameAirport(r.origin,f.origin)&&sameAirport(r.destination,f.destination)&&ids(r).some(id=>ids(f).includes(id)));
-  if(matches.length!==1)return f;
-  const live=matches[0];
-  return {...f,...live,origin:{...f.origin,...live.origin},destination:{...f.destination,...live.destination},codeshares:[...new Set([...ids(f).filter(id=>id!==f.ident&&id!==f.ident_iata),...(live.codeshares||[]),...(live.codeshares_iata||[])])],schedule_only:false,source:'FlightAware flight status',status_checked_at:checkedAt};
+  const candidates=rows.filter(r=>sameAirport(r.origin,f.origin)&&sameAirport(r.destination,f.destination)&&sameIdentity(r,f)).map(r=>({row:r,delta:Math.abs(Date.parse(r.scheduled_out)-Date.parse(f.scheduled_out))})).filter(item=>Number.isFinite(item.delta)&&item.delta<=20*60000).sort((a,b)=>a.delta-b.delta);
+  // A small provider schedule revision is safe only when there is one
+  // identity/route candidate. Never guess between repeated same-day services.
+  if(candidates.length!==1)return f;
+  const live=candidates[0].row;
+  return {...f,...live,origin:{...f.origin,...live.origin},destination:{...f.destination,...live.destination},codeshares:[...new Set([...ids(f).filter(id=>![f.ident,f.ident_iata,f.ident_icao].filter(Boolean).map(value=>String(value).toUpperCase()).includes(id)),...(live.codeshares||[]),...(live.codeshares_iata||[])])],schedule_only:false,source:'FlightAware flight status',status_checked_at:checkedAt,status_match:candidates[0].delta?{method:'operator, flight number and route; revised schedule time',schedule_delta_minutes:Math.round(candidates[0].delta/60000)}:{method:'exact identifier, route and schedule time',schedule_delta_minutes:0}};
  });
 }

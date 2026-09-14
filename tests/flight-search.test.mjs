@@ -5,6 +5,15 @@ import {validateRouteQuery,scheduleCandidates,originDayWindow} from '../route-se
 test('flight search accepts airline names, codes, conversational text and booking snippets',()=>{
  for(const [input,ident] of [['AA100','AA100'],['AA 100','AA100'],['B61','B61'],['JBU1','JBU1'],['JL1','JL1'],['SQ12','SQ12'],['BA1511 JFK-LHR','BA1511'],['United flight #15','UA15'],['flight 100 with American Airlines','AA100'],['100 American Airlines','AA100'],['El Al 7 from Tel Aviv','LY7'],['Emirites 202 tomorrow','EK202'],['Booking details\nFlight: BA1511\nJFK-LHR','BA1511']])assert.equal(parseSearch(input,'2026-09-13').ident,ident,input);
 });
+test('Africa-first discovery resolves major cities and airlines',()=>{
+ for(const [input,ident] of [['Kenya Airways 762 tomorrow','KQ762'],['Air Peace 7538 tomorrow','P47538'],['RwandAir 464 tomorrow','WB464'],['South African Airways 303 tomorrow','SA303'],['Air Algérie 100 tomorrow','AH100']])assert.equal(parseSearch(input,'2026-09-15').ident,ident,input);
+ assert.deepEqual(resolveAirport('Nairobi'),['NBO','WIL']);
+ assert.deepEqual(resolveAirport('Addis Ababa'),['ADD']);
+ assert.deepEqual(resolveAirport('Lagos'),['LOS']);
+ assert.deepEqual(resolveAirport('Cairo'),['CAI']);
+ assert.deepEqual(resolveAirport('Abidjan'),['ABJ']);
+ const route=parseSearch('Accra to Dakar tomorrow','2026-09-15');assert.equal(route.origin,'ACC');assert.equal(route.destination,'DSS');
+});
 test('missing airline, multiple flights, city ambiguity and invalid dates are not silently guessed',()=>{
  assert.equal(parseSearch('100','2026-09-13').number,'100');
  assert.equal(parseSearch('100','2026-09-13').ident,'');

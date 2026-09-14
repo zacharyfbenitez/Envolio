@@ -21,6 +21,9 @@ test('AA4397 storm + earlier rotation uses actual production scorer, no duplicat
  assert.ok(risk.score>clear.score);assert.ok(risk.factors.find(f=>f.key==='origin_weather').value>=50);assert.equal(risk.factors.filter(f=>f.key==='inbound').length,1);assert.equal(risk.calibration.material_signal,false);
  risk.operational_warnings=forecast.warnings;assert.match(scoreAudit(risk).warning_summary,/moderate/);
  const missing=create(flight,{flights:[]},{originDelay:{color:'green',retrieved_at:at(-60)}});assert.equal(missing.factors.find(f=>f.key==='origin_airport').value,null);
+ const sparse={...flight,scheduled_out:at(-60),estimated_out:at(-60),scheduled_off:at(-45),actual_off:at(-15)};
+ const sparseIndex=create(sparse,{flights:[]},{});assert.equal(sparseIndex.factors.find(f=>f.key==='schedule').value,50);
+ const incomparable=create({...sparse,scheduled_off:null},{flights:[]},{originDelay:{color:'green',retrieved_at:new Date().toISOString()}});assert.equal(incomparable.factors.find(f=>f.key==='schedule').value,null);
 });
 test('audit captures missing signals and contribution reweighting',()=>{
  const index={factors:[{key:'route',value:50,weight:.5},{key:'origin_weather',value:80,weight:.5,source_detail:{forecast_used:true}}]};
